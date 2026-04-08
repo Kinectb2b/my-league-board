@@ -20,7 +20,7 @@ export default function MembersPage() {
   async function fetchAll() {
     setLoading(true)
     const [m, i] = await Promise.all([
-      supabase.from('organization_members').select('*, profiles(full_name, email)').eq('organization_id', currentOrg.id),
+      supabase.from('organization_members').select('*, profiles!profile_id(full_name, email)').eq('organization_id', currentOrg.id),
       supabase.from('invitations').select('*').eq('organization_id', currentOrg.id).is('accepted_at', null)
     ])
     setMembers(m.data || [])
