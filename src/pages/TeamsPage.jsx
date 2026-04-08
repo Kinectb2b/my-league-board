@@ -34,6 +34,7 @@ export default function TeamsPage() {
   const [quickAddSubmitting, setQuickAddSubmitting] = useState(false)
   const [gearTeam, setGearTeam] = useState(null)
   const [showAssignGear, setShowAssignGear] = useState(null)
+  const [bulkAssignDivision, setBulkAssignDivision] = useState(null)
 
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
   useEffect(() => { if (seasons.length > 0 && !filterSeason) { const a = seasons.find(s => s.is_active); if (a) setFilterSeason(a.id) } }, [seasons])
@@ -203,6 +204,7 @@ export default function TeamsPage() {
                               <div><h3>{div.name}</h3><span className="division-meta">{div.seasons?.name}{div.age_range ? ` · Ages ${div.age_range}` : ''}</span></div>
                             </div>
                             {canEdit && <div className="division-actions">
+                              <button className="btn-small" onClick={(e) => { e.stopPropagation(); setBulkAssignDivision(div) }} title="Assign gear to all teams">🎒</button>
                               <button className="btn-quick-add" onClick={() => { setQuickAddDivisionId(quickAddDivisionId === div.id ? null : div.id); setQuickAddName('') }}>+</button>
                               <button className="btn-icon-sm" onClick={() => setEditingDivision(div)}>✎</button>
                               <button className="btn-icon-sm btn-icon-danger" onClick={() => deleteDivision(div.id, div.name)}>✕</button>
@@ -263,6 +265,17 @@ export default function TeamsPage() {
         {editingDivision && <EditDivisionModal division={editingDivision} seasons={seasons} sportTypes={sportTypes} onDone={() => { setEditingDivision(null); fetchAll() }} onClose={() => setEditingDivision(null)} />}
         {showAssignGear && <AssignGearModal team={showAssignGear} templates={templates} onAssign={createBagFromTemplate} onClose={() => setShowAssignGear(null)} />}
         {gearTeam && <GearDetailModal team={gearTeam} bag={getTeamBag(gearTeam.id)} statusConfig={statusConfig} onToggle={togglePacked} onMarkBuilt={markBuilt} onPickup={markPickedUp} onReturn={markReturned} onReplace={replaceItem} onDelete={deleteBag} onClose={() => { setGearTeam(null); fetchAll() }} />}
+        {bulkAssignDivision && (
+          <BulkAssignModal
+            division={bulkAssignDivision}
+            teams={filteredTeams}
+            templates={templates}
+            existingBags={bags}
+            filterSeason={filterSeason}
+            onAssign={createBagFromTemplate}
+            onClose={() => { setBulkAssignDivision(null); fetchAll() }}
+          />
+        )}
       </main>
       <style>{teamStyles}</style>
     </div>
@@ -535,6 +548,80 @@ function EditDivisionModal({ division, seasons, sportTypes, onDone, onClose }) {
   const [name, setName] = useState(division.name); const [sid, setSid] = useState(division.season_id); const [spid, setSpid] = useState(division.sport_type_id); const [ar, setAr] = useState(division.age_range||''); const [sub, setSub] = useState(false); const [err, setErr] = useState('')
   async function go(e) { e.preventDefault(); setSub(true); const { error } = await supabase.from('divisions').update({ name, season_id: sid, sport_type_id: spid, age_range: ar||null }).eq('id', division.id); if (error) setErr(error.message); else onDone(); setSub(false) }
   return (<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Edit division</h2><button className="btn-icon" onClick={onClose}>✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-row"><div className="form-group"><label>Sport *</label><select value={spid} onChange={e => setSpid(e.target.value)} required>{sportTypes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div className="form-group"><label>Season *</label><select value={sid} onChange={e => setSid(e.target.value)} required>{seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div></div><div className="form-group"><label>Age range</label><input type="text" value={ar} onChange={e => setAr(e.target.value)} /></div>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Saving...' : 'Save'}</button></div></form></div></div>)
+}
+
+function BulkAssignModal({ division, teams, templates, existingBags, filterSeason, onAssign, onClose }) {
+  const [templateId, setTemplateId] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [results, setResults] = useState(null)
+
+  const divTeams = teams.filter(t => t.division_id === division.id)
+  const teamsWithoutBags = divTeams.filter(t => !existingBags.find(b => b.team_id === t.id && b.season_id === filterSeason))
+  const teamsWithBags = divTeams.filter(t => existingBags.find(b => b.team_id === t.id && b.season_id === filterSeason))
+
+  async function handleBulkAssign(e) {
+    e.preventDefault()
+    if (!templateId || teamsWithoutBags.length === 0) return
+    setSubmitting(true)
+    let success = 0
+    let failed = 0
+    for (const team of teamsWithoutBags) {
+      try {
+        await onAssign(team.id, templateId, null)
+        success++
+      } catch { failed++ }
+    }
+    setResults({ success, failed, total: teamsWithoutBags.length })
+    setSubmitting(false)
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Assign gear to {division.name}</h2>
+          <button className="btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-form">
+          {results ? (
+            <div>
+              <p style={{ textAlign: 'center', fontSize: '1.1rem', fontWeight: 600, color: 'var(--green-700)', marginBottom: '1rem' }}>
+                ✓ Assigned gear to {results.success} of {results.total} teams
+              </p>
+              {results.failed > 0 && <p className="form-error">{results.failed} team(s) failed</p>}
+              <div className="modal-actions"><button className="btn-primary" onClick={onClose}>Done</button></div>
+            </div>
+          ) : (
+            <form onSubmit={handleBulkAssign}>
+              <p className="text-muted" style={{ marginBottom: '1rem' }}>
+                {teamsWithoutBags.length} of {divTeams.length} teams need gear assigned.
+                {teamsWithBags.length > 0 && ` ${teamsWithBags.length} already have bags and will be skipped.`}
+              </p>
+              {teamsWithoutBags.length === 0 ? (
+                <p style={{ textAlign: 'center', fontWeight: 500 }}>All teams already have gear assigned!</p>
+              ) : (
+                <div className="form-group">
+                  <label>Kit template *</label>
+                  <select value={templateId} onChange={e => setTemplateId(e.target.value)} required>
+                    <option value="">Select a template...</option>
+                    {templates.map(t => <option key={t.id} value={t.id}>{t.name} ({t.kit_template_items?.length || 0} items)</option>)}
+                  </select>
+                </div>
+              )}
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+                {teamsWithoutBags.length > 0 && (
+                  <button type="submit" className="btn-primary" disabled={submitting || !templateId}>
+                    {submitting ? `Assigning (${teamsWithoutBags.length} teams)...` : `Assign to ${teamsWithoutBags.length} teams`}
+                  </button>
+                )}
+              </div>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const teamStyles = `
