@@ -127,6 +127,13 @@ export default function TeamsPage() {
     fetchAll()
   }
 
+  async function removeBagItem(bagItemId) {
+    if (!confirm('Remove this item from the bag?')) return
+    await supabase.from('team_bag_items').delete().eq('id', bagItemId)
+    addToast('Item removed from bag')
+    fetchAll()
+  }
+
   async function deleteBag(bagId) {
     if (!confirm('Delete this bag assignment?')) return
     await supabase.from('team_bag_items').delete().eq('team_bag_id', bagId)
@@ -264,7 +271,7 @@ export default function TeamsPage() {
         {editingTeam && <EditTeamModal team={editingTeam} divisions={divisions} onDone={() => { setEditingTeam(null); fetchAll() }} onClose={() => setEditingTeam(null)} />}
         {editingDivision && <EditDivisionModal division={editingDivision} seasons={seasons} sportTypes={sportTypes} onDone={() => { setEditingDivision(null); fetchAll() }} onClose={() => setEditingDivision(null)} />}
         {showAssignGear && <AssignGearModal team={showAssignGear} templates={templates} onAssign={createBagFromTemplate} onClose={() => setShowAssignGear(null)} />}
-        {gearTeam && <GearDetailModal team={gearTeam} bag={getTeamBag(gearTeam.id)} statusConfig={statusConfig} onToggle={togglePacked} onMarkBuilt={markBuilt} onPickup={markPickedUp} onReturn={markReturned} onReplace={replaceItem} onDelete={deleteBag} onPrint={printChecklist} onClose={() => { setGearTeam(null); fetchAll() }} />}
+        {gearTeam && <GearDetailModal team={gearTeam} bag={getTeamBag(gearTeam.id)} statusConfig={statusConfig} onToggle={togglePacked} onMarkBuilt={markBuilt} onPickup={markPickedUp} onReturn={markReturned} onReplace={replaceItem} onRemove={removeBagItem} onDelete={deleteBag} onPrint={printChecklist} onClose={() => { setGearTeam(null); fetchAll() }} />}
         {bulkAssignDivision && (
           <BulkAssignModal
             division={bulkAssignDivision}
@@ -405,10 +412,11 @@ function AssignGearModal({ team, templates, onAssign, onClose }) {
   )
 }
 
-function GearDetailModal({ team, bag, statusConfig, onToggle, onMarkBuilt, onPickup, onReturn, onReplace, onDelete, onPrint, onClose }) {
+function GearDetailModal({ team, bag, statusConfig, onToggle, onMarkBuilt, onPickup, onReturn, onReplace, onRemove, onDelete, onPrint, onClose }) {
   const [showPickup, setShowPickup] = useState(false)
   const [showReturn, setShowReturn] = useState(false)
   const [showReplace, setShowReplace] = useState(null)
+  const [showAddItem, setShowAddItem] = useState(false)
 
   if (!bag) { onClose(); return null }
 
@@ -452,18 +460,19 @@ function GearDetailModal({ team, bag, statusConfig, onToggle, onMarkBuilt, onPic
         {required.length > 0 && (
           <div className="checklist-section">
             <h4 className="checklist-heading">Required ({required.filter(i => i.is_packed).length}/{required.length})</h4>
-            {required.map(item => <ChecklistRow key={item.id} item={item} onToggle={onToggle} onReplace={() => setShowReplace(item)} disabled={bag.status === 'returned'} />)}
+            {required.map(item => <ChecklistRow key={item.id} item={item} onToggle={onToggle} onReplace={() => setShowReplace(item)} onRemove={() => onRemove(item.id)} disabled={bag.status === 'returned'} canRemove={['building','built'].includes(bag.status)} />)}
           </div>
         )}
         {optional.length > 0 && (
           <div className="checklist-section">
             <h4 className="checklist-heading">Optional ({optional.filter(i => i.is_packed).length}/{optional.length})</h4>
-            {optional.map(item => <ChecklistRow key={item.id} item={item} onToggle={onToggle} onReplace={() => setShowReplace(item)} disabled={bag.status === 'returned'} />)}
+            {optional.map(item => <ChecklistRow key={item.id} item={item} onToggle={onToggle} onReplace={() => setShowReplace(item)} onRemove={() => onRemove(item.id)} disabled={bag.status === 'returned'} canRemove={['building','built'].includes(bag.status)} />)}
           </div>
         )}
 
         <div className="gear-footer">
           <button className="btn-secondary" onClick={() => onPrint(team, bag)}>Print checklist</button>
+          {['building','built'].includes(bag.status) && <button className="btn-secondary" onClick={() => setShowAddItem(true)}>+ Add item</button>}
           <button className="btn-secondary btn-danger-text" onClick={() => onDelete(bag.id)}>Delete bag assignment</button>
         </div>
       </div>
@@ -471,11 +480,19 @@ function GearDetailModal({ team, bag, statusConfig, onToggle, onMarkBuilt, onPic
       {showPickup && <PickupModal onConfirm={name => { onPickup(bag.id, name); setShowPickup(false) }} onClose={() => setShowPickup(false)} />}
       {showReturn && <ReturnModal onConfirm={cond => { onReturn(bag.id, cond); setShowReturn(false) }} onClose={() => setShowReturn(false)} />}
       {showReplace && <ReplaceModal item={showReplace} onConfirm={(reason, desc) => { onReplace(showReplace.id, reason, desc); setShowReplace(null) }} onClose={() => setShowReplace(null)} />}
+      {showAddItem && (
+        <AddBagItemModal
+          bagId={bag.id}
+          existingItemIds={(bag.team_bag_items || []).map(i => i.equipment_item_id).filter(Boolean)}
+          orgId={bag.organization_id}
+          onClose={() => { setShowAddItem(false); onClose() }}
+        />
+      )}
     </div></div>
   )
 }
 
-function ChecklistRow({ item, onToggle, onReplace, disabled }) {
+function ChecklistRow({ item, onToggle, onReplace, onRemove, disabled, canRemove }) {
   const replacements = item.bag_item_replacements || []
   return (
     <div className={`checklist-row ${item.is_packed ? 'packed' : ''}`}>
@@ -484,6 +501,7 @@ function ChecklistRow({ item, onToggle, onReplace, disabled }) {
         <span className={item.is_packed ? 'line-through' : ''}>{item.equipment_items?.name || item.equipment_categories?.name || 'Unknown'}</span>
       </label>
       {!disabled && <button className="btn-replace" onClick={onReplace}>Replace</button>}
+      {canRemove && <button className="btn-replace" onClick={onRemove} style={{ color: 'var(--red-500)' }}>Remove</button>}
       {replacements.length > 0 && (
         <div className="replacements">
           {replacements.map(r => (
@@ -495,6 +513,64 @@ function ChecklistRow({ item, onToggle, onReplace, disabled }) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function AddBagItemModal({ bagId, existingItemIds, orgId, onClose }) {
+  const [equipment, setEquipment] = useState([])
+  const [selectedId, setSelectedId] = useState('')
+  const [isRequired, setIsRequired] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const { addToast } = useToast()
+
+  useEffect(() => {
+    supabase.from('equipment_items').select('*, equipment_categories(name)')
+      .eq('organization_id', orgId).order('name')
+      .then(({ data }) => setEquipment((data || []).filter(e => !existingItemIds.includes(e.id))))
+  }, [])
+
+  async function handleAdd(e) {
+    e.preventDefault()
+    if (!selectedId) return
+    setSubmitting(true)
+    const { error } = await supabase.from('team_bag_items').insert({
+      team_bag_id: bagId,
+      equipment_item_id: selectedId,
+      is_required: isRequired,
+      is_packed: false
+    })
+    if (error) addToast('Failed to add item', 'error')
+    else addToast('Item added to bag')
+    setSubmitting(false)
+    onClose()
+  }
+
+  return (
+    <div className="modal-overlay" style={{ zIndex: 200 }} onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header"><h2>Add item to bag</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <form onSubmit={handleAdd} className="modal-form">
+          <div className="form-group">
+            <label>Equipment item *</label>
+            <select value={selectedId} onChange={e => setSelectedId(e.target.value)} required>
+              <option value="">Select item...</option>
+              {equipment.map(eq => <option key={eq.id} value={eq.id}>{eq.name}{eq.equipment_categories?.name ? ' (' + eq.equipment_categories.name + ')' : ''}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Priority</label>
+            <select value={isRequired ? 'required' : 'optional'} onChange={e => setIsRequired(e.target.value === 'required')}>
+              <option value="required">Required</option>
+              <option value="optional">Optional</option>
+            </select>
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={submitting || !selectedId}>{submitting ? 'Adding...' : 'Add to bag'}</button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }
