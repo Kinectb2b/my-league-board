@@ -312,6 +312,10 @@ body {
   font-weight: 700;
   font-size: 1.1rem;
   letter-spacing: 0.05em;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidebar-org {

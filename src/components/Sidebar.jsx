@@ -17,7 +17,7 @@ export default function Sidebar() {
             <line x1="24" y1="19" x2="24" y2="14" stroke="#e8b931" strokeWidth="2" strokeLinecap="round"/>
           </svg>
           <div>
-            <div className="sidebar-title">{currentOrg?.name ? (currentOrg.name.length > 20 ? currentOrg.name.substring(0, 20) + '...' : currentOrg.name) : 'My League Board'}</div>
+            <div className="sidebar-title">{currentOrg?.name || 'My League Board'}</div>
             <div className="sidebar-org">My League Board</div>
           </div>
         </div>
