@@ -3,6 +3,7 @@ import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
 import Sidebar from '../components/Sidebar'
 import { useToast } from '../components/Toast'
+import { logActivity } from '../lib/activity'
 
 const EQUIPMENT_TYPES = [
   { id: 'balls', label: 'Balls' },
@@ -71,12 +72,15 @@ export default function EquipmentPage() {
     else await supabase.from('equipment_items').insert(payload)
     fetchAll(); setShowAddModal(false); setEditingItem(null)
     addToast(isEdit ? 'Equipment updated' : 'Equipment added')
+    logActivity(currentOrg.id, isEdit ? 'updated' : 'added', 'equipment', formData.name)
   }
 
   async function deleteItem(id) {
     if (!confirm('Delete this equipment item?')) return
+    const item = items.find(i => i.id === id)
     await supabase.from('equipment_items').delete().eq('id', id)
     fetchAll(); addToast('Equipment deleted')
+    logActivity(currentOrg.id, 'deleted', 'equipment', item?.name)
   }
 
   const filtered = items.filter(item => {

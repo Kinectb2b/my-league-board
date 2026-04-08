@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import Sidebar from '../components/Sidebar'
 import { useToast } from '../components/Toast'
+import { logActivity } from '../lib/activity'
 
 export default function TeamsPage() {
   const { currentOrg } = useOrg()
@@ -77,6 +78,7 @@ export default function TeamsPage() {
     if (!quickAddName.trim()) return; setQuickAddSubmitting(true)
     await supabase.from('teams').insert({ organization_id: currentOrg.id, name: quickAddName.trim(), division_id: divisionId, color: '#1a472a' })
     setQuickAddName(''); setQuickAddDivisionId(null); setQuickAddSubmitting(false); fetchAll()
+    logActivity(currentOrg.id, 'added', 'team', quickAddName.trim())
   }
 
   async function createBagFromTemplate(teamId, templateId, bagTag) {
@@ -92,6 +94,7 @@ export default function TeamsPage() {
     }))
     if (items.length > 0) await supabase.from('team_bag_items').insert(items)
     setShowAssignGear(null); fetchAll(); addToast('Gear assigned to team')
+    logActivity(currentOrg.id, 'assigned gear', 'team', teams.find(t => t.id === teamId)?.name)
   }
 
   async function togglePacked(bagItemId, current) {
@@ -102,16 +105,19 @@ export default function TeamsPage() {
   async function markBuilt(bagId) {
     await supabase.from('team_bags').update({ status: 'built', built_by: user.id, built_at: new Date().toISOString() }).eq('id', bagId)
     fetchAll(); addToast('Bag marked as built')
+    logActivity(currentOrg.id, 'marked built', 'bag', gearTeam?.name)
   }
 
   async function markPickedUp(bagId, name) {
     await supabase.from('team_bags').update({ status: 'picked_up', picked_up_by_name: name, picked_up_at: new Date().toISOString() }).eq('id', bagId)
     fetchAll(); addToast('Pickup recorded')
+    logActivity(currentOrg.id, 'recorded pickup', 'bag', gearTeam?.name, 'Picked up by ' + name)
   }
 
   async function markReturned(bagId, condition) {
     await supabase.from('team_bags').update({ status: 'returned', returned_at: new Date().toISOString(), returned_condition: condition || null }).eq('id', bagId)
     fetchAll(); addToast('Return recorded')
+    logActivity(currentOrg.id, 'recorded return', 'bag', gearTeam?.name)
   }
 
   async function replaceItem(bagItemId, reason, description) {

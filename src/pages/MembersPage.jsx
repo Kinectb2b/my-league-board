@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { friendlyError } from '../lib/errors'
+import { logActivity } from '../lib/activity'
 import Sidebar from '../components/Sidebar'
 
 export default function MembersPage() {
@@ -31,14 +32,14 @@ export default function MembersPage() {
   async function updateRole(memberId, newRole) {
     const { error } = await supabase.from('organization_members').update({ role: newRole }).eq('id', memberId)
     if (error) addToast(friendlyError(error), 'error')
-    else { addToast('Role updated'); fetchAll() }
+    else { addToast('Role updated'); fetchAll(); logActivity(currentOrg.id, 'changed role', 'member', null) }
   }
 
   async function removeMember(memberId, name) {
     if (!confirm('Remove ' + name + ' from the league?')) return
     const { error } = await supabase.from('organization_members').delete().eq('id', memberId)
     if (error) addToast(friendlyError(error), 'error')
-    else { addToast(name + ' removed'); fetchAll() }
+    else { addToast(name + ' removed'); fetchAll(); logActivity(currentOrg.id, 'removed', 'member', name) }
   }
 
   async function sendInvite(email, role) {
@@ -60,6 +61,7 @@ export default function MembersPage() {
     } else {
       addToast('Invitation created')
     }
+    logActivity(currentOrg.id, 'invited', 'member', email, 'Role: ' + role)
     setShowInvite(false)
     fetchAll()
   }

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { friendlyError } from '../lib/errors'
 import Sidebar from '../components/Sidebar'
 import { useToast } from '../components/Toast'
+import { logActivity } from '../lib/activity'
 
 export default function LocationsPage() {
   const { currentOrg } = useOrg()
@@ -40,7 +41,7 @@ export default function LocationsPage() {
 
   async function addLocation(formData) {
     const { data, error } = await supabase.from('storage_locations').insert({ ...formData, organization_id: currentOrg.id }).select().single()
-    if (!error && data) { setShowAdd(false); fetchAll(); setActiveLocation(data); addToast('Location added') }
+    if (!error && data) { setShowAdd(false); fetchAll(); setActiveLocation(data); addToast('Location added'); logActivity(currentOrg.id, 'added', 'location', formData.name) }
     return { error }
   }
 
@@ -128,6 +129,7 @@ export default function LocationsPage() {
     await Promise.all(updates)
     setLocalStock({}); setHasChanges(false)
     setSaveMessage('Saved!'); setTimeout(() => setSaveMessage(''), 2000); addToast('Changes saved')
+    logActivity(currentOrg.id, 'updated stock', 'location', activeLocation?.name)
     fetchAll()
   }
 
@@ -293,6 +295,7 @@ export default function LocationsPage() {
 
 function TransferModal({ locations, stock, equipment, supplyRoom, activeLocation, onTransfer, onClose }) {
   const { addToast } = useToast()
+  const { currentOrg } = useOrg()
   const [fromId, setFromId] = useState(supplyRoom?.id || '')
   const [toId, setToId] = useState(activeLocation?.id && activeLocation.id !== supplyRoom?.id ? activeLocation.id : '')
   const [itemId, setItemId] = useState('')
@@ -324,7 +327,7 @@ function TransferModal({ locations, stock, equipment, supplyRoom, activeLocation
     setSubmitting(true); setError('')
     const { error } = await onTransfer(fromId, toId, itemId, qty)
     if (error) setError(friendlyError(error))
-    else { setSuccess(`Transferred ${qty} to ${locations.find(l => l.id === toId)?.name}`); setQty(1); setItemId(''); setTimeout(() => setSuccess(''), 3000); addToast('Transfer complete') }
+    else { setSuccess(`Transferred ${qty} to ${locations.find(l => l.id === toId)?.name}`); setQty(1); setItemId(''); setTimeout(() => setSuccess(''), 3000); addToast('Transfer complete'); logActivity(currentOrg?.id, 'transferred', 'equipment', null, 'Transfer completed') }
     setSubmitting(false)
   }
 
