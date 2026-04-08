@@ -747,18 +747,122 @@ body {
 .toast-info { background: #1e40af; color: white; }
 @keyframes toastIn { from { transform: translateY(1rem); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
+/* Mobile responsive */
 @media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
   .sidebar {
-    width: 64px;
+    position: fixed;
+    top: 0;
+    left: -260px;
+    width: 260px;
+    height: 100vh;
+    z-index: 1000;
+    transition: left 0.3s ease;
   }
-  .sidebar-org, .sidebar-title, .sidebar-user-name, .sidebar-user-email, .nav-link span:not(.nav-icon) {
+
+  .sidebar.sidebar-open {
+    left: 0;
+  }
+
+  .sidebar-overlay {
     display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 999;
   }
-  .sidebar-logo svg + div { display: none; }
-  .nav-link { justify-content: center; padding: 0.75rem; border-left: none; }
-  .main-content { margin-left: 64px; padding: 1rem; }
-  .page-header { flex-direction: column; }
+
+  .sidebar-overlay.active {
+    display: block;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 1rem !important;
+    padding-top: 3.5rem !important;
+  }
+
+  .mobile-header {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3rem;
+    background: var(--green-900);
+    color: white;
+    align-items: center;
+    padding: 0 1rem;
+    z-index: 998;
+    gap: 0.75rem;
+  }
+
+  .mobile-header-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .hamburger {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 0.25rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start !important;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  .filters-bar {
+    flex-wrap: wrap;
+  }
+
+  .locations-layout {
+    flex-direction: column !important;
+  }
+
+  .locations-list-panel {
+    flex: none !important;
+    max-height: none !important;
+  }
+
+  .data-table {
+    font-size: 0.8rem;
+  }
+
+  .data-table th, .data-table td {
+    padding: 0.5rem 0.4rem;
+  }
+
+  .modal {
+    margin: 0.5rem !important;
+    max-height: 90vh !important;
+  }
+
   .form-row { flex-direction: column; }
-  .filters-bar { flex-direction: column; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (min-width: 769px) {
+  .mobile-header { display: none; }
+  .sidebar-overlay { display: none !important; }
 }

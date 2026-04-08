@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useOrg } from '../contexts/OrgContext'
@@ -5,6 +6,7 @@ import { useOrg } from '../contexts/OrgContext'
 export default function Sidebar() {
   const { signOut, profile } = useAuth()
   const { currentOrg, userRole } = useOrg()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const canSee = (page) => {
     const access = {
@@ -19,50 +21,57 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-header">
-        <div className="sidebar-logo">
-          <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
-            <rect width="48" height="48" rx="12" fill="#1a472a"/>
-            <path d="M14 34V18L24 12L34 18V34" stroke="#f5f0e1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-            <circle cx="24" cy="24" r="5" stroke="#e8b931" strokeWidth="2"/>
-            <line x1="24" y1="19" x2="24" y2="14" stroke="#e8b931" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-          <div>
-            <div className="sidebar-title">{currentOrg?.name || 'My League Board'}</div>
-            <div className="sidebar-org">My League Board</div>
+    <>
+      <div className="mobile-header">
+        <button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
+        <span className="mobile-header-title">{currentOrg?.name || 'My League Board'}</span>
+      </div>
+      <div className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)} />
+      <aside className={`sidebar ${sidebarOpen ? 'sidebar-open' : ''}`}>
+        <div className="sidebar-header">
+          <div className="sidebar-logo">
+            <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+              <rect width="48" height="48" rx="12" fill="#1a472a"/>
+              <path d="M14 34V18L24 12L34 18V34" stroke="#f5f0e1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <circle cx="24" cy="24" r="5" stroke="#e8b931" strokeWidth="2"/>
+              <line x1="24" y1="19" x2="24" y2="14" stroke="#e8b931" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            <div>
+              <div className="sidebar-title">{currentOrg?.name || 'My League Board'}</div>
+              <div className="sidebar-org">My League Board</div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <nav className="sidebar-nav">
-        {canSee('dashboard') && <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">📊</span> Dashboard
-        </NavLink>}
-        {canSee('equipment') && <NavLink to="/equipment" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">📦</span> Equipment
-        </NavLink>}
-        {canSee('teams') && <NavLink to="/teams" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">👥</span> Teams
-        </NavLink>}
-        {canSee('locations') && <NavLink to="/locations" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">🏠</span> Locations
-        </NavLink>}
-        {canSee('members') && <NavLink to="/members" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">👤</span> Members
-        </NavLink>}
-        {canSee('settings') && <NavLink to="/settings" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-          <span className="nav-icon">⚙️</span> Settings
-        </NavLink>}
-      </nav>
+        <nav className="sidebar-nav">
+          {canSee('dashboard') && <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <span className="nav-icon">📊</span> Dashboard
+          </NavLink>}
+          {canSee('equipment') && <NavLink to="/equipment" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <span className="nav-icon">📦</span> Equipment
+          </NavLink>}
+          {canSee('teams') && <NavLink to="/teams" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <span className="nav-icon">👥</span> Teams
+          </NavLink>}
+          {canSee('locations') && <NavLink to="/locations" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <span className="nav-icon">🏠</span> Locations
+          </NavLink>}
+          {canSee('members') && <NavLink to="/members" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <span className="nav-icon">👤</span> Members
+          </NavLink>}
+          {canSee('settings') && <NavLink to="/settings" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <span className="nav-icon">⚙️</span> Settings
+          </NavLink>}
+        </nav>
 
-      <div className="sidebar-footer">
-        <div className="sidebar-user">
-          <div className="sidebar-user-name">{profile?.full_name || 'User'}</div>
-          <div className="sidebar-user-email">{profile?.email || ''}</div>
+        <div className="sidebar-footer">
+          <div className="sidebar-user">
+            <div className="sidebar-user-name">{profile?.full_name || 'User'}</div>
+            <div className="sidebar-user-email">{profile?.email || ''}</div>
+          </div>
+          <button className="btn-signout" onClick={signOut}>Sign out</button>
         </div>
-        <button className="btn-signout" onClick={signOut}>Sign out</button>
-      </div>
-    </aside>
+      </aside>
+    </>
   )
 }
