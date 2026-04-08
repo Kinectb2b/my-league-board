@@ -264,7 +264,7 @@ export default function TeamsPage() {
         {editingTeam && <EditTeamModal team={editingTeam} divisions={divisions} onDone={() => { setEditingTeam(null); fetchAll() }} onClose={() => setEditingTeam(null)} />}
         {editingDivision && <EditDivisionModal division={editingDivision} seasons={seasons} sportTypes={sportTypes} onDone={() => { setEditingDivision(null); fetchAll() }} onClose={() => setEditingDivision(null)} />}
         {showAssignGear && <AssignGearModal team={showAssignGear} templates={templates} onAssign={createBagFromTemplate} onClose={() => setShowAssignGear(null)} />}
-        {gearTeam && <GearDetailModal team={gearTeam} bag={getTeamBag(gearTeam.id)} statusConfig={statusConfig} onToggle={togglePacked} onMarkBuilt={markBuilt} onPickup={markPickedUp} onReturn={markReturned} onReplace={replaceItem} onDelete={deleteBag} onClose={() => { setGearTeam(null); fetchAll() }} />}
+        {gearTeam && <GearDetailModal team={gearTeam} bag={getTeamBag(gearTeam.id)} statusConfig={statusConfig} onToggle={togglePacked} onMarkBuilt={markBuilt} onPickup={markPickedUp} onReturn={markReturned} onReplace={replaceItem} onDelete={deleteBag} onPrint={printChecklist} onClose={() => { setGearTeam(null); fetchAll() }} />}
         {bulkAssignDivision && (
           <BulkAssignModal
             division={bulkAssignDivision}
@@ -405,7 +405,7 @@ function AssignGearModal({ team, templates, onAssign, onClose }) {
   )
 }
 
-function GearDetailModal({ team, bag, statusConfig, onToggle, onMarkBuilt, onPickup, onReturn, onReplace, onDelete, onClose }) {
+function GearDetailModal({ team, bag, statusConfig, onToggle, onMarkBuilt, onPickup, onReturn, onReplace, onDelete, onPrint, onClose }) {
   const [showPickup, setShowPickup] = useState(false)
   const [showReturn, setShowReturn] = useState(false)
   const [showReplace, setShowReplace] = useState(null)
@@ -463,6 +463,7 @@ function GearDetailModal({ team, bag, statusConfig, onToggle, onMarkBuilt, onPic
         )}
 
         <div className="gear-footer">
+          <button className="btn-secondary" onClick={() => onPrint(team, bag)}>Print checklist</button>
           <button className="btn-secondary btn-danger-text" onClick={() => onDelete(bag.id)}>Delete bag assignment</button>
         </div>
       </div>
@@ -548,6 +549,48 @@ function EditDivisionModal({ division, seasons, sportTypes, onDone, onClose }) {
   const [name, setName] = useState(division.name); const [sid, setSid] = useState(division.season_id); const [spid, setSpid] = useState(division.sport_type_id); const [ar, setAr] = useState(division.age_range||''); const [sub, setSub] = useState(false); const [err, setErr] = useState('')
   async function go(e) { e.preventDefault(); setSub(true); const { error } = await supabase.from('divisions').update({ name, season_id: sid, sport_type_id: spid, age_range: ar||null }).eq('id', division.id); if (error) setErr(error.message); else onDone(); setSub(false) }
   return (<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Edit division</h2><button className="btn-icon" onClick={onClose}>✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-row"><div className="form-group"><label>Sport *</label><select value={spid} onChange={e => setSpid(e.target.value)} required>{sportTypes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div className="form-group"><label>Season *</label><select value={sid} onChange={e => setSid(e.target.value)} required>{seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div></div><div className="form-group"><label>Age range</label><input type="text" value={ar} onChange={e => setAr(e.target.value)} /></div>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Saving...' : 'Save'}</button></div></form></div></div>)
+}
+
+function printChecklist(team, bag) {
+  const items = bag.team_bag_items || []
+  const required = items.filter(i => i.is_required)
+  const optional = items.filter(i => !i.is_required)
+
+  const html = `
+    <html>
+    <head>
+      <title>${team.name} - Gear Checklist</title>
+      <style>
+        body { font-family: 'DM Sans', Arial, sans-serif; padding: 2rem; max-width: 600px; margin: 0 auto; }
+        h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+        h2 { font-size: 0.9rem; color: #666; margin-top: 1.5rem; margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.05em; }
+        .meta { color: #888; font-size: 0.85rem; margin-bottom: 1.5rem; }
+        .item { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0; border-bottom: 1px solid #eee; }
+        .box { width: 18px; height: 18px; border: 2px solid #333; border-radius: 3px; flex-shrink: 0; }
+        .packed .box { background: #1a472a; }
+        .label { font-size: 0.9rem; }
+        @media print { body { padding: 1rem; } }
+      </style>
+    </head>
+    <body>
+      <h1>${team.name}</h1>
+      <div class="meta">
+        ${bag.kit_templates?.name || 'Gear bag'}${bag.bag_tag ? ' · Tag: ' + bag.bag_tag : ''}<br>
+        Printed ${new Date().toLocaleDateString()}
+      </div>
+      ${required.length > 0 ? '<h2>Required</h2>' + required.map(i =>
+        '<div class="item' + (i.is_packed ? ' packed' : '') + '"><div class="box"></div><span class="label">' + (i.equipment_items?.name || i.equipment_categories?.name || 'Unknown') + '</span></div>'
+      ).join('') : ''}
+      ${optional.length > 0 ? '<h2>Optional</h2>' + optional.map(i =>
+        '<div class="item' + (i.is_packed ? ' packed' : '') + '"><div class="box"></div><span class="label">' + (i.equipment_items?.name || i.equipment_categories?.name || 'Unknown') + '</span></div>'
+      ).join('') : ''}
+    </body>
+    </html>
+  `
+  const printWindow = window.open('', '_blank')
+  printWindow.document.write(html)
+  printWindow.document.close()
+  printWindow.print()
 }
 
 function BulkAssignModal({ division, teams, templates, existingBags, filterSeason, onAssign, onClose }) {
