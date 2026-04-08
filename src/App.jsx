@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard'
 import EquipmentPage from './pages/EquipmentPage'
 import TeamsPage from './pages/TeamsPage'
 import LocationsPage from './pages/LocationsPage'
+import MembersPage from './pages/MembersPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading: authLoading } = useAuth()
@@ -33,6 +34,7 @@ function AppRoutes() {
       <Route path="/equipment" element={<ProtectedRoute><EquipmentPage /></ProtectedRoute>} />
       <Route path="/teams" element={<ProtectedRoute><TeamsPage /></ProtectedRoute>} />
       <Route path="/locations" element={<ProtectedRoute><LocationsPage /></ProtectedRoute>} />
+      <Route path="/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" />} />
     </Routes>
   )

@@ -36,6 +36,9 @@ export default function Sidebar() {
         <NavLink to="/locations" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <span className="nav-icon">🏠</span> Locations
         </NavLink>
+        <NavLink to="/members" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+          <span className="nav-icon">👤</span> Members
+        </NavLink>
       </nav>
 
       <div className="sidebar-footer">
