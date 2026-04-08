@@ -4,7 +4,19 @@ import { useOrg } from '../contexts/OrgContext'
 
 export default function Sidebar() {
   const { signOut, profile } = useAuth()
-  const { currentOrg } = useOrg()
+  const { currentOrg, userRole } = useOrg()
+
+  const canSee = (page) => {
+    const access = {
+      dashboard: ['admin','equipment_manager','coach','board_member','volunteer'],
+      equipment: ['admin','equipment_manager','board_member'],
+      teams: ['admin','equipment_manager','coach','board_member','volunteer'],
+      locations: ['admin','equipment_manager','board_member'],
+      members: ['admin'],
+      settings: ['admin','equipment_manager']
+    }
+    return !userRole || access[page]?.includes(userRole)
+  }
 
   return (
     <aside className="sidebar">
@@ -24,24 +36,24 @@ export default function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+        {canSee('dashboard') && <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <span className="nav-icon">📊</span> Dashboard
-        </NavLink>
-        <NavLink to="/equipment" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+        </NavLink>}
+        {canSee('equipment') && <NavLink to="/equipment" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <span className="nav-icon">📦</span> Equipment
-        </NavLink>
-        <NavLink to="/teams" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+        </NavLink>}
+        {canSee('teams') && <NavLink to="/teams" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <span className="nav-icon">👥</span> Teams
-        </NavLink>
-        <NavLink to="/locations" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+        </NavLink>}
+        {canSee('locations') && <NavLink to="/locations" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <span className="nav-icon">🏠</span> Locations
-        </NavLink>
-        <NavLink to="/members" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+        </NavLink>}
+        {canSee('members') && <NavLink to="/members" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <span className="nav-icon">👤</span> Members
-        </NavLink>
-        <NavLink to="/settings" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+        </NavLink>}
+        {canSee('settings') && <NavLink to="/settings" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
           <span className="nav-icon">⚙️</span> Settings
-        </NavLink>
+        </NavLink>}
       </nav>
 
       <div className="sidebar-footer">

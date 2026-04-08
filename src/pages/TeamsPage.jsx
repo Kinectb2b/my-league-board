@@ -7,9 +7,10 @@ import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
 
 export default function TeamsPage() {
-  const { currentOrg } = useOrg()
+  const { currentOrg, userRole } = useOrg()
   const { user } = useAuth()
   const { addToast } = useToast()
+  const canEdit = ['admin','equipment_manager'].includes(userRole)
   const [teams, setTeams] = useState([])
   const [divisions, setDivisions] = useState([])
   const [seasons, setSeasons] = useState([])
@@ -151,11 +152,11 @@ export default function TeamsPage() {
             <h1>Teams & divisions</h1>
             <p className="text-muted">{filteredTeams.length} teams across {filteredDivisions.length} divisions</p>
           </div>
-          <div className="header-actions">
+          {canEdit && <div className="header-actions">
             <button className="btn-secondary" onClick={() => setShowAddSport(true)}>+ Sport</button>
             <button className="btn-secondary" onClick={() => setShowAddSeason(true)}>+ Season</button>
             {sportTypes.length > 0 && seasons.length > 0 && (<><button className="btn-secondary" onClick={() => setShowAddDivision(true)}>+ Division</button><button className="btn-primary" onClick={() => setShowAddTeam(true)}>+ Team</button></>)}
-          </div>
+          </div>}
         </div>
 
         {seasons.length > 0 && (
@@ -187,7 +188,7 @@ export default function TeamsPage() {
                       <h2 className="sport-title">{sport.name.toUpperCase()}</h2>
                       <span className="sport-count">{sportDivisions.length} div · {filteredTeams.filter(t => { const d = divisions.find(dd => dd.id === t.division_id); return d && d.sport_type_id === sport.id }).length} teams</span>
                     </div>
-                    <div className="sport-header-actions"><button className="btn-icon-sm btn-icon-danger" onClick={e => { e.stopPropagation(); deleteSport(sport.id, sport.name) }}>✕</button></div>
+                    {canEdit && <div className="sport-header-actions"><button className="btn-icon-sm btn-icon-danger" onClick={e => { e.stopPropagation(); deleteSport(sport.id, sport.name) }}>✕</button></div>}
                   </div>
                   {sportDivisions.length === 0 ? <div className="empty-sport"><p className="text-muted">No divisions yet</p></div> : (
                     <div className="divisions-list">
@@ -201,11 +202,11 @@ export default function TeamsPage() {
                               <span className="division-drag-handle">⠿</span>
                               <div><h3>{div.name}</h3><span className="division-meta">{div.seasons?.name}{div.age_range ? ` · Ages ${div.age_range}` : ''}</span></div>
                             </div>
-                            <div className="division-actions">
+                            {canEdit && <div className="division-actions">
                               <button className="btn-quick-add" onClick={() => { setQuickAddDivisionId(quickAddDivisionId === div.id ? null : div.id); setQuickAddName('') }}>+</button>
                               <button className="btn-icon-sm" onClick={() => setEditingDivision(div)}>✎</button>
                               <button className="btn-icon-sm btn-icon-danger" onClick={() => deleteDivision(div.id, div.name)}>✕</button>
-                            </div>
+                            </div>}
                           </div>
                           <div className="team-list">
                             {filteredTeams.filter(t => t.division_id === div.id).map(team => {
@@ -219,17 +220,17 @@ export default function TeamsPage() {
                                   <span className="team-name-text">{team.name}</span>
                                   <div className="team-gear-status">
                                     {!bag ? (
-                                      <button className="btn-assign" onClick={() => setShowAssignGear(team)}>Assign gear</button>
+                                      canEdit ? <button className="btn-assign" onClick={() => setShowAssignGear(team)}>Assign gear</button> : <span className="text-muted" style={{ fontSize: '0.75rem' }}>No gear</span>
                                     ) : (
                                       <button className="btn-gear-status" style={{ backgroundColor: sc.bg, color: sc.color }} onClick={() => setGearTeam(team)}>
                                         {sc.label}{bag.status === 'building' && ` ${packed}/${total}`}
                                       </button>
                                     )}
                                   </div>
-                                  <div className="team-row-actions">
+                                  {canEdit && <div className="team-row-actions">
                                     <button className="btn-icon-sm" onClick={() => setEditingTeam(team)}>✎</button>
                                     <button className="btn-icon-sm btn-icon-danger" onClick={() => deleteTeam(team.id, team.name)}>✕</button>
-                                  </div>
+                                  </div>}
                                 </div>
                               )
                             })}

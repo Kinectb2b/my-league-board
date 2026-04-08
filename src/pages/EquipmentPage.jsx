@@ -20,8 +20,9 @@ const EQUIPMENT_TYPES = [
 ]
 
 export default function EquipmentPage() {
-  const { currentOrg } = useOrg()
+  const { currentOrg, userRole } = useOrg()
   const { addToast } = useToast()
+  const canEdit = ['admin','equipment_manager'].includes(userRole)
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
   const [locations, setLocations] = useState([])
@@ -114,7 +115,7 @@ export default function EquipmentPage() {
             <h1>Equipment inventory</h1>
             <p className="text-muted">{totalQty} total · {availableQty} available · {assignedQty} assigned{repairQty > 0 ? ` · ${repairQty} needs repair` : ''}</p>
           </div>
-          <button className="btn-primary" onClick={() => setShowAddModal(true)}>+ Add equipment</button>
+          {canEdit && <button className="btn-primary" onClick={() => setShowAddModal(true)}>+ Add equipment</button>}
         </div>
 
         <div className="filters-bar">
@@ -139,7 +140,7 @@ export default function EquipmentPage() {
                     <td>{getItemStockedQty(item.id) || item.quantity}</td>
                     <td><span className="badge" style={{ backgroundColor:(cc[item.item_condition]||'#6b7280')+'20', color:cc[item.item_condition]||'#6b7280' }}>{item.item_condition.replace('_',' ')}</span></td>
                     <td><span className="badge" style={{ backgroundColor:(sc[item.status]||'#6b7280')+'20', color:sc[item.status]||'#6b7280' }}>{item.status.replace('_',' ')}</span></td>
-                    <td><div style={{display:'flex',gap:'0.25rem'}}><button className="btn-icon-sm" onClick={() => setEditingItem(item)} title="Edit">✎</button><button className="btn-icon-sm btn-icon-danger" onClick={() => deleteItem(item.id)} title="Delete">✕</button></div></td>
+                    {canEdit && <td><div style={{display:'flex',gap:'0.25rem'}}><button className="btn-icon-sm" onClick={() => setEditingItem(item)} title="Edit">✎</button><button className="btn-icon-sm btn-icon-danger" onClick={() => deleteItem(item.id)} title="Delete">✕</button></div></td>}
                   </tr>
                 ))}
               </tbody>

@@ -7,8 +7,9 @@ import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
 
 export default function LocationsPage() {
-  const { currentOrg } = useOrg()
+  const { currentOrg, userRole } = useOrg()
   const { addToast } = useToast()
+  const canEdit = ['admin','equipment_manager'].includes(userRole)
   const [locations, setLocations] = useState([])
   const [equipment, setEquipment] = useState([])
   const [stock, setStock] = useState([])
@@ -156,10 +157,10 @@ export default function LocationsPage() {
             <h1>Storage locations</h1>
             <p className="text-muted">{locations.length} locations · {totalStocked} allocated · {totalUnallocated > 0 ? `${totalUnallocated} unallocated` : 'all allocated'}</p>
           </div>
-          <div className="header-actions">
+          {canEdit && <div className="header-actions">
             {locations.length > 1 && <button className="btn-secondary" onClick={() => setShowTransfer(true)}>Transfer</button>}
             <button className="btn-primary" onClick={() => setShowAdd(true)}>+ Add location</button>
-          </div>
+          </div>}
         </div>
 
         {loading ? <div className="loading-state">Loading...</div> : (
@@ -177,11 +178,11 @@ export default function LocationsPage() {
                         {loc.is_supply_room && <span className="supply-badge">Supply room</span>}
                         {loc.location_type && !loc.is_supply_room && <span className="badge badge-neutral" style={{ marginLeft: '0.5rem' }}>{loc.location_type}</span>}
                       </div>
-                      <div className="loc-card-actions">
+                      {canEdit && <div className="loc-card-actions">
                         <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); toggleSupplyRoom(loc.id, loc.is_supply_room) }} title="Toggle supply room" style={{ color: loc.is_supply_room ? 'var(--gold-500)' : undefined }}>★</button>
                         <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setEditingLocation(loc) }} title="Edit">✎</button>
                         <button className="btn-icon-sm btn-icon-danger" onClick={e => { e.stopPropagation(); deleteLocation(loc.id) }} title="Delete">✕</button>
-                      </div>
+                      </div>}
                     </div>
                     {loc.description && <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>{loc.description}</p>}
                     <div className="loc-card-stats">
@@ -201,12 +202,12 @@ export default function LocationsPage() {
                     <h2>{activeLocation.name}{activeLocation.is_supply_room && <span className="supply-badge" style={{ marginLeft: '0.75rem' }}>Supply room</span>}</h2>
                     <span className="text-muted">{activeLocation.description || activeLocation.location_type || 'Storage location'}</span>
                   </div>
-                  <div className="header-actions">
+                  {canEdit && <div className="header-actions">
                     {supplyRoom && activeLocation.id !== supplyRoom.id && (
                       <button className="btn-secondary" onClick={() => setShowTransfer(true)}>Transfer from {supplyRoom.name}</button>
                     )}
                     <button className="btn-primary" onClick={() => setShowAddStock(true)}>+ Add items</button>
-                  </div>
+                  </div>}
                 </div>
 
                 {getLocationStock(activeLocation.id).length === 0 ? (
@@ -235,14 +236,16 @@ export default function LocationsPage() {
                               <td><strong>{s.equipment_items?.name || 'Unknown'}</strong></td>
                               <td>{s.equipment_items?.equipment_categories?.name || '—'}</td>
                               <td>
-                                <div className="qty-controls">
-                                  <button className="qty-btn" onClick={() => updateLocalQty(s.id, currentQty - 1)}>−</button>
-                                  <input type="number" className="qty-input" value={currentQty} onChange={e => updateLocalQty(s.id, e.target.value)} min="0" />
-                                  <button className="qty-btn" onClick={() => updateLocalQty(s.id, currentQty + 1)}>+</button>
-                                </div>
+                                {canEdit ? (
+                                  <div className="qty-controls">
+                                    <button className="qty-btn" onClick={() => updateLocalQty(s.id, currentQty - 1)}>−</button>
+                                    <input type="number" className="qty-input" value={currentQty} onChange={e => updateLocalQty(s.id, e.target.value)} min="0" />
+                                    <button className="qty-btn" onClick={() => updateLocalQty(s.id, currentQty + 1)}>+</button>
+                                  </div>
+                                ) : <span style={{ fontWeight: 600 }}>{currentQty}</span>}
                               </td>
                               <td>
-                                <input type="number" className="target-input" value={getLocalTarget(s.id, s.target_quantity)} onChange={e => updateLocalTarget(s.id, e.target.value)} placeholder="—" min="0" />
+                                {canEdit ? <input type="number" className="target-input" value={getLocalTarget(s.id, s.target_quantity)} onChange={e => updateLocalTarget(s.id, e.target.value)} placeholder="—" min="0" /> : <span>{getLocalTarget(s.id, s.target_quantity) || '—'}</span>}
                               </td>
                               <td>
                                 {!currentTarget ? <span className="badge badge-neutral">No target</span>
@@ -250,7 +253,7 @@ export default function LocationsPage() {
                                   : overstocked ? <span className="badge badge-over">Over by {currentQty - currentTarget}</span>
                                   : <span className="badge badge-good">Stocked</span>}
                               </td>
-                              <td><button className="btn-icon-sm btn-icon-danger" onClick={() => removeStockItem(s.id)} title="Remove">✕</button></td>
+                              {canEdit && <td><button className="btn-icon-sm btn-icon-danger" onClick={() => removeStockItem(s.id)} title="Remove">✕</button></td>}
                             </tr>
                           )
                         })}

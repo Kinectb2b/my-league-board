@@ -9,6 +9,7 @@ export function OrgProvider({ children }) {
   const [orgs, setOrgs] = useState([])
   const [currentOrg, setCurrentOrg] = useState(null)
   const [membership, setMembership] = useState(null)
+  const [userRole, setUserRole] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -17,6 +18,7 @@ export function OrgProvider({ children }) {
       setOrgs([])
       setCurrentOrg(null)
       setMembership(null)
+      setUserRole(null)
       setLoading(false)
     }
   }, [user])
@@ -34,6 +36,9 @@ export function OrgProvider({ children }) {
 
       const savedOrgId = localStorage.getItem('mlb_current_org')
       const savedOrg = orgList.find(o => o.id === savedOrgId)
+
+      const myMembership = memberships.find(m => m.profile_id === user.id)
+      if (myMembership) setUserRole(myMembership.role)
 
       if (savedOrg) {
         setCurrentOrg(savedOrg)
@@ -71,7 +76,7 @@ export function OrgProvider({ children }) {
 
   return (
     <OrgContext.Provider value={{
-      orgs, currentOrg, membership, loading,
+      orgs, currentOrg, membership, userRole, loading,
       switchOrg, createOrg, refreshOrgs: fetchOrgs
     }}>
       {children}
