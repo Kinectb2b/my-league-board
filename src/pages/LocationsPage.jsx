@@ -143,6 +143,57 @@ export default function LocationsPage() {
   function getItemInventoryQty(itemId) { const item = equipment.find(e => e.id === itemId); return item?.quantity || 0 }
   function getItemUnallocated(itemId) { return Math.max(0, getItemInventoryQty(itemId) - getItemTotalAcrossLocations(itemId)) }
 
+  function printRestockReport() {
+    const needsRestock = stock.filter(s => s.target_quantity && s.quantity < s.target_quantity)
+    if (needsRestock.length === 0) { addToast('All locations are fully stocked!', 'info'); return }
+
+    const byLocation = {}
+    needsRestock.forEach(s => {
+      const locName = s.storage_locations?.name || 'Unknown'
+      if (!byLocation[locName]) byLocation[locName] = []
+      byLocation[locName].push({
+        item: s.equipment_items?.name || 'Unknown',
+        current: s.quantity,
+        target: s.target_quantity,
+        needed: s.target_quantity - s.quantity
+      })
+    })
+
+    const html = `
+      <html>
+      <head>
+        <title>Restock Report - ${currentOrg?.name || 'My League Board'}</title>
+        <style>
+          body { font-family: 'DM Sans', Arial, sans-serif; padding: 2rem; max-width: 700px; margin: 0 auto; }
+          h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+          h2 { font-size: 1rem; margin-top: 1.5rem; margin-bottom: 0.5rem; color: #1a472a; border-bottom: 2px solid #1a472a; padding-bottom: 0.25rem; }
+          .meta { color: #888; font-size: 0.85rem; margin-bottom: 1.5rem; }
+          table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; }
+          th { text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: #666; border-bottom: 1px solid #ddd; padding: 0.4rem 0.5rem; }
+          td { padding: 0.4rem 0.5rem; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+          .need { color: #ea580c; font-weight: 600; }
+          @media print { body { padding: 1rem; } }
+        </style>
+      </head>
+      <body>
+        <h1>Restock Report</h1>
+        <div class="meta">${currentOrg?.name || ''} · Generated ${new Date().toLocaleDateString()}</div>
+        ${Object.entries(byLocation).map(([loc, items]) => `
+          <h2>${loc}</h2>
+          <table>
+            <thead><tr><th>Item</th><th>Current</th><th>Target</th><th>Need</th></tr></thead>
+            <tbody>${items.map(i => `<tr><td>${i.item}</td><td>${i.current}</td><td>${i.target}</td><td class="need">+${i.needed}</td></tr>`).join('')}</tbody>
+          </table>
+        `).join('')}
+      </body>
+      </html>
+    `
+    const w = window.open('', '_blank')
+    w.document.write(html)
+    w.document.close()
+    w.print()
+  }
+
   const supplyRoom = locations.find(l => l.is_supply_room)
   const totalStocked = stock.reduce((s, r) => s + r.quantity, 0)
   const totalInventory = equipment.reduce((s, e) => s + e.quantity, 0)
@@ -158,6 +209,7 @@ export default function LocationsPage() {
             <p className="text-muted">{locations.length} locations · {totalStocked} allocated · {totalUnallocated > 0 ? `${totalUnallocated} unallocated` : 'all allocated'}</p>
           </div>
           {canEdit && <div className="header-actions">
+            <button className="btn-secondary" onClick={printRestockReport}>Restock report</button>
             {locations.length > 1 && <button className="btn-secondary" onClick={() => setShowTransfer(true)}>Transfer</button>}
             <button className="btn-primary" onClick={() => setShowAdd(true)}>+ Add location</button>
           </div>}

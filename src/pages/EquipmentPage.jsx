@@ -35,6 +35,7 @@ export default function EquipmentPage() {
   const [filterCondition, setFilterCondition] = useState('')
   const [filterLocation, setFilterLocation] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [selectedItem, setSelectedItem] = useState(null)
 
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
 
@@ -45,7 +46,7 @@ export default function EquipmentPage() {
       supabase.from('equipment_items').select('*, equipment_categories(name), storage_locations!storage_location_id(name)').eq('organization_id', orgId).order('created_at', { ascending: false }),
       supabase.from('equipment_categories').select('*').eq('organization_id', orgId).order('name'),
       supabase.from('storage_locations').select('*').eq('organization_id', orgId).order('name'),
-      supabase.from('location_stock').select('equipment_item_id, quantity').eq('organization_id', orgId)
+      supabase.from('location_stock').select('id, equipment_item_id, storage_location_id, quantity').eq('organization_id', orgId)
     ])
     setItems(i.data || []); setCategories(c.data || []); setLocations(l.data || []); setStockData(s.data || []); setLoading(false)
   }
@@ -134,7 +135,7 @@ export default function EquipmentPage() {
               <thead><tr><th>Name</th><th>Category</th><th>Qty</th><th>Condition</th><th>Status</th><th></th></tr></thead>
               <tbody>
                 {filtered.map(item => (
-                  <tr key={item.id}>
+                  <tr key={item.id} onClick={() => setSelectedItem(item)} style={{ cursor: 'pointer' }}>
                     <td className="item-name"><strong>{item.name}</strong>{item.brand && <span className="item-detail">{item.brand} {item.model||''}</span>}{item.size && <span className="item-detail">{item.size}</span>}</td>
                     <td>{item.equipment_categories?.name || '—'}</td>
                     <td>{getItemStockedQty(item.id) || item.quantity}</td>
@@ -158,12 +159,58 @@ export default function EquipmentPage() {
             onClose={() => { setShowAddModal(false); setEditingItem(null) }}
           />
         )}
+        {selectedItem && <ItemDetailModal item={selectedItem} locationStock={stockData} locations={locations} onClose={() => setSelectedItem(null)} />}
       </main>
       <style>{`
         .btn-icon-sm { background:none; border:none; color:var(--gray-400); cursor:pointer; font-size:0.85rem; padding:0.2rem 0.4rem; border-radius:4px; transition:color .15s,background .15s; line-height:1; }
         .btn-icon-sm:hover { color:var(--green-700); background:var(--green-100); }
         .btn-icon-danger:hover { color:var(--red-500)!important; background:var(--red-100)!important; }
       `}</style>
+    </div>
+  )
+}
+
+function ItemDetailModal({ item, locationStock, locations, onClose }) {
+  const itemStock = locationStock.filter(s => s.equipment_item_id === item.id)
+  const totalStocked = itemStock.reduce((sum, s) => sum + s.quantity, 0)
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>{item.name}</h2>
+          <button className="btn-icon" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-form">
+          <div style={{ display: 'flex', gap: '2rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+            <div><span className="text-muted" style={{ fontSize: '0.8rem' }}>Category</span><div style={{ fontWeight: 500 }}>{item.equipment_categories?.name || '—'}</div></div>
+            <div><span className="text-muted" style={{ fontSize: '0.8rem' }}>Condition</span><div style={{ fontWeight: 500 }}>{item.item_condition || '—'}</div></div>
+            <div><span className="text-muted" style={{ fontSize: '0.8rem' }}>Status</span><div style={{ fontWeight: 500 }}>{item.status || '—'}</div></div>
+            <div><span className="text-muted" style={{ fontSize: '0.8rem' }}>Total stocked</span><div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{totalStocked}</div></div>
+          </div>
+
+          <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--gray-600)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Locations</h3>
+          {itemStock.length === 0 ? (
+            <p className="text-muted">Not stocked at any location yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              {itemStock.map(s => {
+                const loc = locations.find(l => l.id === s.storage_location_id)
+                return (
+                  <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0.75rem', background: 'var(--gray-50)', borderRadius: 'var(--radius)', border: '1px solid var(--gray-100)' }}>
+                    <span style={{ fontWeight: 500 }}>{loc?.name || 'Unknown'}</span>
+                    <span style={{ fontWeight: 600 }}>{s.quantity} qty</span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          <div className="modal-actions" style={{ marginTop: '1rem' }}>
+            <button className="btn-secondary" onClick={onClose}>Close</button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
