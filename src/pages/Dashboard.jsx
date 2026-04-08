@@ -10,6 +10,7 @@ export default function Dashboard() {
   const { currentOrg } = useOrg()
   const [stats, setStats] = useState({ totalItems: 0, totalQty: 0, assignedQty: 0, availableQty: 0, needsRepair: 0, teams: 0, locations: 0 })
   const [activities, setActivities] = useState([])
+  const [checklist, setChecklist] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { if (currentOrg) fetchStats() }, [currentOrg])
@@ -17,12 +18,13 @@ export default function Dashboard() {
   async function fetchStats() {
     setLoading(true)
     const orgId = currentOrg.id
-    const [items, teams, locations, stock, activityResult] = await Promise.all([
+    const [items, teams, locations, stock, activityResult, templatesResult] = await Promise.all([
       supabase.from('equipment_items').select('status, item_condition, quantity').eq('organization_id', orgId),
       supabase.from('teams').select('id', { count: 'exact' }).eq('organization_id', orgId),
-      supabase.from('storage_locations').select('id', { count: 'exact' }).eq('organization_id', orgId),
+      supabase.from('storage_locations').select('id, is_supply_room').eq('organization_id', orgId),
       supabase.from('location_stock').select('quantity').eq('organization_id', orgId),
-      supabase.from('activity_log').select('*, profiles!actor_id(full_name)').eq('organization_id', orgId).order('created_at', { ascending: false }).limit(10)
+      supabase.from('activity_log').select('*, profiles!actor_id(full_name)').eq('organization_id', orgId).order('created_at', { ascending: false }).limit(10),
+      supabase.from('kit_templates').select('id', { count: 'exact' }).eq('organization_id', orgId)
     ])
     const d = items.data || []
     const stockTotal = (stock.data || []).reduce((s, r) => s + r.quantity, 0)
@@ -30,6 +32,14 @@ export default function Dashboard() {
     const totalQty = stockTotal > 0 ? stockTotal : itemTotal
     const assignedQty = d.filter(i => i.status === 'assigned').reduce((s, i) => s + i.quantity, 0)
     setActivities(activityResult.data || [])
+    const locData = locations.data || []
+    const hasEquipment = d.length > 0
+    const hasTeams = (teams.count || 0) > 0
+    const hasLocations = locData.length > 0
+    const hasSupplyRoom = locData.some(l => l.is_supply_room)
+    const hasTemplates = (templatesResult.count || 0) > 0
+    const allDone = hasEquipment && hasTeams && hasLocations && hasSupplyRoom && hasTemplates
+    setChecklist(allDone ? null : { hasEquipment, hasTeams, hasLocations, hasSupplyRoom, hasTemplates })
     setStats({
       totalItems: d.length,
       totalQty,
@@ -37,7 +47,7 @@ export default function Dashboard() {
       availableQty: totalQty - assignedQty,
       needsRepair: d.filter(i => ['broken', 'damaged', 'needs_repair'].includes(i.item_condition)).reduce((s, i) => s + i.quantity, 0),
       teams: teams.count || 0,
-      locations: locations.count || 0
+      locations: locData.length
     })
     setLoading(false)
   }
@@ -120,6 +130,19 @@ export default function Dashboard() {
             </div>
           )}
         </div>
+
+        {checklist && (
+          <div style={{ marginTop: '2rem', background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--gray-700)', marginBottom: '0.75rem' }}>Getting started</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <CheckItem done={checklist.hasEquipment} label="Add your equipment inventory" link="/equipment" />
+              <CheckItem done={checklist.hasLocations} label="Set up storage locations" link="/locations" />
+              <CheckItem done={checklist.hasSupplyRoom} label="Mark a supply room" link="/locations" />
+              <CheckItem done={checklist.hasTeams} label="Add teams and divisions" link="/teams" />
+              <CheckItem done={checklist.hasTemplates} label="Create a kit template" link="/settings" />
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )
@@ -135,4 +158,13 @@ export default function Dashboard() {
     if (days < 7) return days + 'd ago'
     return new Date(date).toLocaleDateString()
   }
+}
+
+function CheckItem({ done, label, link }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.4rem 0' }}>
+      <span style={{ width: 20, height: 20, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', background: done ? 'var(--green-600)' : 'var(--gray-200)', color: done ? 'white' : 'var(--gray-400)' }}>{done ? '✓' : ''}</span>
+      {done ? <span style={{ color: 'var(--gray-400)', textDecoration: 'line-through' }}>{label}</span> : <a href={link} style={{ color: 'var(--green-700)', fontWeight: 500, textDecoration: 'none' }}>{label}</a>}
+    </div>
+  )
 }
