@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { OrgProvider, useOrg } from './contexts/OrgContext'
+import { ToastProvider } from './components/Toast'
 import AuthPage from './pages/AuthPage'
 import OrgSetupPage from './pages/OrgSetupPage'
 import Dashboard from './pages/Dashboard'
@@ -42,7 +43,9 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <OrgProvider>
-          <AppRoutes />
+          <ToastProvider>
+            <AppRoutes />
+          </ToastProvider>
         </OrgProvider>
       </AuthProvider>
     </BrowserRouter>

@@ -3,9 +3,11 @@ import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
 import { friendlyError } from '../lib/errors'
 import Sidebar from '../components/Sidebar'
+import { useToast } from '../components/Toast'
 
 export default function LocationsPage() {
   const { currentOrg } = useOrg()
+  const { addToast } = useToast()
   const [locations, setLocations] = useState([])
   const [equipment, setEquipment] = useState([])
   const [stock, setStock] = useState([])
@@ -38,7 +40,7 @@ export default function LocationsPage() {
 
   async function addLocation(formData) {
     const { data, error } = await supabase.from('storage_locations').insert({ ...formData, organization_id: currentOrg.id }).select().single()
-    if (!error && data) { setShowAdd(false); fetchAll(); setActiveLocation(data) }
+    if (!error && data) { setShowAdd(false); fetchAll(); setActiveLocation(data); addToast('Location added') }
     return { error }
   }
 
@@ -125,7 +127,7 @@ export default function LocationsPage() {
     })
     await Promise.all(updates)
     setLocalStock({}); setHasChanges(false)
-    setSaveMessage('Saved!'); setTimeout(() => setSaveMessage(''), 2000)
+    setSaveMessage('Saved!'); setTimeout(() => setSaveMessage(''), 2000); addToast('Changes saved')
     fetchAll()
   }
 
@@ -290,6 +292,7 @@ export default function LocationsPage() {
 }
 
 function TransferModal({ locations, stock, equipment, supplyRoom, activeLocation, onTransfer, onClose }) {
+  const { addToast } = useToast()
   const [fromId, setFromId] = useState(supplyRoom?.id || '')
   const [toId, setToId] = useState(activeLocation?.id && activeLocation.id !== supplyRoom?.id ? activeLocation.id : '')
   const [itemId, setItemId] = useState('')
@@ -321,7 +324,7 @@ function TransferModal({ locations, stock, equipment, supplyRoom, activeLocation
     setSubmitting(true); setError('')
     const { error } = await onTransfer(fromId, toId, itemId, qty)
     if (error) setError(friendlyError(error))
-    else { setSuccess(`Transferred ${qty} to ${locations.find(l => l.id === toId)?.name}`); setQty(1); setItemId(''); setTimeout(() => setSuccess(''), 3000) }
+    else { setSuccess(`Transferred ${qty} to ${locations.find(l => l.id === toId)?.name}`); setQty(1); setItemId(''); setTimeout(() => setSuccess(''), 3000); addToast('Transfer complete') }
     setSubmitting(false)
   }
 

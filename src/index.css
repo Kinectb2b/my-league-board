@@ -736,6 +736,13 @@ body {
   margin-top: 0.5rem;
 }
 
+.toast-container { position: fixed; bottom: 1.5rem; right: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; z-index: 9999; }
+.toast { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.25rem; border-radius: var(--radius); font-size: 0.85rem; font-weight: 500; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: toastIn 0.3s ease; min-width: 200px; }
+.toast-success { background: var(--green-800); color: white; }
+.toast-error { background: #dc2626; color: white; }
+.toast-info { background: #1e40af; color: white; }
+@keyframes toastIn { from { transform: translateY(1rem); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
 @media (max-width: 768px) {
   .sidebar {
     width: 64px;

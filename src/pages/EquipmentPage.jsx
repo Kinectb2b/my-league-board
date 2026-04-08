@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
 import Sidebar from '../components/Sidebar'
+import { useToast } from '../components/Toast'
 
 const EQUIPMENT_TYPES = [
   { id: 'balls', label: 'Balls' },
@@ -19,6 +20,7 @@ const EQUIPMENT_TYPES = [
 
 export default function EquipmentPage() {
   const { currentOrg } = useOrg()
+  const { addToast } = useToast()
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
   const [locations, setLocations] = useState([])
@@ -68,12 +70,13 @@ export default function EquipmentPage() {
     if (isEdit) await supabase.from('equipment_items').update(payload).eq('id', itemId)
     else await supabase.from('equipment_items').insert(payload)
     fetchAll(); setShowAddModal(false); setEditingItem(null)
+    addToast(isEdit ? 'Equipment updated' : 'Equipment added')
   }
 
   async function deleteItem(id) {
     if (!confirm('Delete this equipment item?')) return
     await supabase.from('equipment_items').delete().eq('id', id)
-    fetchAll()
+    fetchAll(); addToast('Equipment deleted')
   }
 
   const filtered = items.filter(item => {

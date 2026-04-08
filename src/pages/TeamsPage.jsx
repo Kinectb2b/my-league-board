@@ -3,10 +3,12 @@ import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import Sidebar from '../components/Sidebar'
+import { useToast } from '../components/Toast'
 
 export default function TeamsPage() {
   const { currentOrg } = useOrg()
   const { user } = useAuth()
+  const { addToast } = useToast()
   const [teams, setTeams] = useState([])
   const [divisions, setDivisions] = useState([])
   const [seasons, setSeasons] = useState([])
@@ -89,7 +91,7 @@ export default function TeamsPage() {
       team_bag_id: bag.id, category_id: ti.category_id, equipment_item_id: ti.equipment_item_id, is_required: ti.is_required, is_packed: false, notes: ti.notes
     }))
     if (items.length > 0) await supabase.from('team_bag_items').insert(items)
-    setShowAssignGear(null); fetchAll()
+    setShowAssignGear(null); fetchAll(); addToast('Gear assigned to team')
   }
 
   async function togglePacked(bagItemId, current) {
@@ -99,17 +101,17 @@ export default function TeamsPage() {
 
   async function markBuilt(bagId) {
     await supabase.from('team_bags').update({ status: 'built', built_by: user.id, built_at: new Date().toISOString() }).eq('id', bagId)
-    fetchAll()
+    fetchAll(); addToast('Bag marked as built')
   }
 
   async function markPickedUp(bagId, name) {
     await supabase.from('team_bags').update({ status: 'picked_up', picked_up_by_name: name, picked_up_at: new Date().toISOString() }).eq('id', bagId)
-    fetchAll()
+    fetchAll(); addToast('Pickup recorded')
   }
 
   async function markReturned(bagId, condition) {
     await supabase.from('team_bags').update({ status: 'returned', returned_at: new Date().toISOString(), returned_condition: condition || null }).eq('id', bagId)
-    fetchAll()
+    fetchAll(); addToast('Return recorded')
   }
 
   async function replaceItem(bagItemId, reason, description) {
@@ -248,8 +250,8 @@ export default function TeamsPage() {
 
         {showAddSport && <AddSportModal orgId={currentOrg.id} onDone={() => { setShowAddSport(false); fetchAll() }} onClose={() => setShowAddSport(false)} />}
         {showAddSeason && <AddSeasonModal orgId={currentOrg.id} onDone={() => { setShowAddSeason(false); fetchAll() }} onClose={() => setShowAddSeason(false)} />}
-        {showAddDivision && <AddDivisionModal orgId={currentOrg.id} seasons={seasons} sportTypes={sportTypes} onDone={() => { setShowAddDivision(false); fetchAll() }} onClose={() => setShowAddDivision(false)} />}
-        {showAddTeam && <AddTeamModal orgId={currentOrg.id} divisions={filteredDivisions.length > 0 ? filteredDivisions : divisions} sportTypes={sportTypes} onDone={() => { setShowAddTeam(false); fetchAll() }} onClose={() => setShowAddTeam(false)} />}
+        {showAddDivision && <AddDivisionModal orgId={currentOrg.id} seasons={seasons} sportTypes={sportTypes} onDone={() => { setShowAddDivision(false); fetchAll(); addToast('Division added') }} onClose={() => setShowAddDivision(false)} />}
+        {showAddTeam && <AddTeamModal orgId={currentOrg.id} divisions={filteredDivisions.length > 0 ? filteredDivisions : divisions} sportTypes={sportTypes} onDone={() => { setShowAddTeam(false); fetchAll(); addToast('Team added') }} onClose={() => setShowAddTeam(false)} />}
         {editingTeam && <EditTeamModal team={editingTeam} divisions={divisions} onDone={() => { setEditingTeam(null); fetchAll() }} onClose={() => setEditingTeam(null)} />}
         {editingDivision && <EditDivisionModal division={editingDivision} seasons={seasons} sportTypes={sportTypes} onDone={() => { setEditingDivision(null); fetchAll() }} onClose={() => setEditingDivision(null)} />}
         {showAssignGear && <AssignGearModal team={showAssignGear} templates={templates} onAssign={createBagFromTemplate} onClose={() => setShowAssignGear(null)} />}
