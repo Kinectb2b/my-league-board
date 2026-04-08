@@ -42,18 +42,24 @@ export default function MembersPage() {
   }
 
   async function sendInvite(email, role) {
-    const { error } = await supabase.from('invitations').insert({
+    const { data, error } = await supabase.from('invitations').insert({
       organization_id: currentOrg.id,
       email,
       role,
       invited_by: user.id
-    })
+    }).select().single()
     if (error) {
       if (error.message.includes('duplicate')) addToast('This person has already been invited', 'error')
       else addToast(friendlyError(error), 'error')
       return
     }
-    addToast('Invitation sent to ' + email)
+    if (data) {
+      const inviteUrl = window.location.origin + '/accept-invite?token=' + data.token
+      navigator.clipboard.writeText(inviteUrl).catch(() => {})
+      addToast('Invite link copied to clipboard!')
+    } else {
+      addToast('Invitation created')
+    }
     setShowInvite(false)
     fetchAll()
   }
