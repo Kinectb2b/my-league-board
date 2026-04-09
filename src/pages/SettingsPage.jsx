@@ -5,7 +5,7 @@ import { useToast } from '../components/Toast'
 import Sidebar from '../components/Sidebar'
 
 export default function SettingsPage() {
-  const { currentOrg } = useOrg()
+  const { currentOrg, refreshOrgs } = useOrg()
   const { addToast } = useToast()
   const [templates, setTemplates] = useState([])
   const [categories, setCategories] = useState([])
@@ -13,6 +13,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [editingTemplate, setEditingTemplate] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
+  const [orgName, setOrgName] = useState(currentOrg?.name || '')
+  const [orgDescription, setOrgDescription] = useState(currentOrg?.description || '')
+  const [savingOrg, setSavingOrg] = useState(false)
 
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
 
@@ -61,6 +64,14 @@ export default function SettingsPage() {
     setEditingTemplate(null); setShowAdd(false); fetchAll()
   }
 
+  async function saveOrgInfo() {
+    setSavingOrg(true)
+    const { error } = await supabase.from('organizations').update({ name: orgName, description: orgDescription }).eq('id', currentOrg.id)
+    if (error) addToast(error.message, 'error')
+    else { addToast('League info updated'); if (refreshOrgs) refreshOrgs() }
+    setSavingOrg(false)
+  }
+
   return (
     <div className="app-layout">
       <Sidebar />
@@ -70,6 +81,19 @@ export default function SettingsPage() {
             <h1>Settings</h1>
             <p className="text-muted">Kit templates and league settings</p>
           </div>
+        </div>
+
+        <div style={{ marginBottom: '2rem', background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem' }}>League info</h2>
+          <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+            <label>Organization name</label>
+            <input type="text" value={orgName} onChange={e => setOrgName(e.target.value)} />
+          </div>
+          <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+            <label>Description</label>
+            <input type="text" value={orgDescription} onChange={e => setOrgDescription(e.target.value)} placeholder="A brief description of your league" />
+          </div>
+          <button className="btn-primary" onClick={saveOrgInfo} disabled={savingOrg}>{savingOrg ? 'Saving...' : 'Save'}</button>
         </div>
 
         <div style={{ marginBottom: '2rem' }}>

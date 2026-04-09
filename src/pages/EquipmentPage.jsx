@@ -85,6 +85,28 @@ export default function EquipmentPage() {
     logActivity(currentOrg.id, 'deleted', 'equipment', item?.name)
   }
 
+  function exportCSV() {
+    const headers = ['Name', 'Category', 'Quantity', 'Condition', 'Status', 'Tag #', 'Notes']
+    const rows = items.map(item => [
+      item.name,
+      item.equipment_categories?.name || '',
+      getItemStockedQty(item.id) || item.quantity,
+      item.item_condition || '',
+      item.status || '',
+      item.tag_number || '',
+      item.notes || ''
+    ])
+    const csv = [headers, ...rows].map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `equipment-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+    addToast('Inventory exported')
+  }
+
   const filtered = items.filter(item => {
     if (filterCategory && item.category_id !== filterCategory) return false
     if (filterStatus && item.status !== filterStatus) return false
@@ -116,7 +138,10 @@ export default function EquipmentPage() {
             <h1>Equipment inventory</h1>
             <p className="text-muted">{totalQty} total · {availableQty} available · {assignedQty} assigned{repairQty > 0 ? ` · ${repairQty} needs repair` : ''}</p>
           </div>
-          {canEdit && <button className="btn-primary" onClick={() => setShowAddModal(true)}>+ Add equipment</button>}
+          <div className="header-actions">
+            {canEdit && <button className="btn-secondary" onClick={exportCSV}>Export CSV</button>}
+            {canEdit && <button className="btn-primary" onClick={() => setShowAddModal(true)}>+ Add equipment</button>}
+          </div>
         </div>
 
         <div className="filters-bar">
