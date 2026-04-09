@@ -37,6 +37,7 @@ export default function EquipmentPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedItem, setSelectedItem] = useState(null)
 
+  useEffect(() => { document.title = 'Equipment | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
 
   async function fetchAll() {

@@ -23,6 +23,7 @@ export default function LocationsPage() {
   const [hasChanges, setHasChanges] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
 
+  useEffect(() => { document.title = 'Locations | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
 
   async function fetchAll() {

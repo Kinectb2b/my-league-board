@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const [orgDescription, setOrgDescription] = useState(currentOrg?.description || '')
   const [savingOrg, setSavingOrg] = useState(false)
 
+  useEffect(() => { document.title = 'Settings | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
 
   async function fetchAll() {

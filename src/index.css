@@ -391,6 +391,8 @@ body {
   padding: 2rem;
   max-width: 1200px;
   overflow-x: hidden;
+  background: linear-gradient(180deg, #f8faf8 0%, #ffffff 100%);
+  min-height: 100vh;
 }
 
 .page-header {
@@ -430,6 +432,12 @@ body {
   padding: 1.25rem;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--gray-200);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 .stat-number {
@@ -476,12 +484,13 @@ body {
   color: var(--gray-800);
   font-weight: 500;
   font-size: 0.9rem;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
 .action-card:hover {
   border-color: var(--green-400);
   box-shadow: var(--shadow);
+  transform: translateY(-1px);
 }
 
 .action-icon { font-size: 1.5rem; }

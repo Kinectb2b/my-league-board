@@ -16,6 +16,7 @@ export default function MembersPage() {
   const [loading, setLoading] = useState(true)
   const [showInvite, setShowInvite] = useState(false)
 
+  useEffect(() => { document.title = 'Members | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
 
   async function fetchAll() {

@@ -37,6 +37,7 @@ export default function TeamsPage() {
   const [showAssignGear, setShowAssignGear] = useState(null)
   const [bulkAssignDivision, setBulkAssignDivision] = useState(null)
 
+  useEffect(() => { document.title = 'Teams | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
   useEffect(() => { if (seasons.length > 0 && !filterSeason) { const a = seasons.find(s => s.is_active); if (a) setFilterSeason(a.id) } }, [seasons])
 

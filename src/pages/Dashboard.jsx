@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [bagStats, setBagStats] = useState({ total: 0, building: 0, built: 0, pickedUp: 0, returned: 0 })
   const [loading, setLoading] = useState(true)
 
+  useEffect(() => { document.title = 'Dashboard | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchStats() }, [currentOrg])
 
   async function fetchStats() {
