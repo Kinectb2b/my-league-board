@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [checklist, setChecklist] = useState(null)
   const [bagStats, setBagStats] = useState({ total: 0, building: 0, built: 0, pickedUp: 0, returned: 0 })
   const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState(null)
 
   useEffect(() => { document.title = 'Dashboard | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchStats() }, [currentOrg])
@@ -61,6 +62,7 @@ export default function Dashboard() {
       locations: locData.length
     })
     setLoading(false)
+    setLastUpdated(new Date())
   }
 
   return (
@@ -71,6 +73,10 @@ export default function Dashboard() {
           <div>
             <h1>Dashboard</h1>
             <p className="text-muted">Welcome back{profile?.full_name ? `, ${profile.full_name}` : ''}</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {lastUpdated && <span className="text-muted" style={{ fontSize: '0.75rem' }}>Updated {lastUpdated.toLocaleTimeString()}</span>}
+            <button className="btn-icon-sm" onClick={fetchStats} title="Refresh" style={{ fontSize: '1rem' }}>↻</button>
           </div>
         </div>
 

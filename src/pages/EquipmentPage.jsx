@@ -39,6 +39,16 @@ export default function EquipmentPage() {
 
   useEffect(() => { document.title = 'Equipment | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        e.preventDefault()
+        document.querySelector('.search-input')?.focus()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   async function fetchAll() {
     setLoading(true)
@@ -71,16 +81,27 @@ export default function EquipmentPage() {
       size: formData.size || null, notes: formData.notes || null,
       organization_id: currentOrg.id
     }
-    if (isEdit) await supabase.from('equipment_items').update(payload).eq('id', itemId)
-    else await supabase.from('equipment_items').insert(payload)
+    if (isEdit) {
+      const oldItem = items.find(i => i.id === itemId)
+      await supabase.from('equipment_items').update(payload).eq('id', itemId)
+      if (oldItem && oldItem.item_condition !== formData.item_condition) {
+        logActivity(currentOrg.id, 'condition changed', 'equipment', formData.name, `${oldItem.item_condition} → ${formData.item_condition}`)
+      }
+    } else {
+      await supabase.from('equipment_items').insert(payload)
+    }
     fetchAll(); setShowAddModal(false); setEditingItem(null)
     addToast(isEdit ? 'Equipment updated' : 'Equipment added')
-    logActivity(currentOrg.id, isEdit ? 'updated' : 'added', 'equipment', formData.name)
+    if (!isEdit) logActivity(currentOrg.id, 'added', 'equipment', formData.name)
   }
 
   async function deleteItem(id) {
     if (!confirm('Delete this equipment item?')) return
     const item = items.find(i => i.id === id)
+    const itemStock = stockData.filter(s => s.equipment_item_id === id && s.quantity > 0)
+    if (itemStock.length > 0) {
+      if (!confirm(`This item is stocked at ${itemStock.length} location(s). Deleting will remove all stock records. Continue?`)) return
+    }
     await supabase.from('equipment_items').delete().eq('id', id)
     fetchAll(); addToast('Equipment deleted')
     logActivity(currentOrg.id, 'deleted', 'equipment', item?.name)
@@ -146,7 +167,7 @@ export default function EquipmentPage() {
         </div>
 
         <div className="filters-bar">
-          <input type="text" placeholder="Search equipment..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="search-input" />
+          <input type="text" placeholder="Search equipment..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="search-input" /><span className="text-muted" style={{ fontSize: '0.7rem' }}>Press / to search</span>
           <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}><option value="">All categories</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="available">Available</option><option value="assigned">Assigned</option><option value="in_repair">In repair</option><option value="lost">Lost</option><option value="retired">Retired</option></select>
           <select value={filterCondition} onChange={e => setFilterCondition(e.target.value)}><option value="">All conditions</option><option value="new">New</option><option value="good">Good</option><option value="fair">Fair</option><option value="worn">Worn</option><option value="damaged">Damaged</option><option value="broken">Broken</option><option value="needs_repair">Needs repair</option></select>
@@ -232,6 +253,13 @@ function ItemDetailModal({ item, locationStock, locations, onClose }) {
                   </div>
                 )
               })}
+            </div>
+          )}
+
+          {item.notes && (
+            <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--gray-50)', borderRadius: 'var(--radius)', border: '1px solid var(--gray-100)' }}>
+              <span className="text-muted" style={{ fontSize: '0.8rem' }}>Notes</span>
+              <p style={{ marginTop: '0.25rem', fontSize: '0.9rem' }}>{item.notes}</p>
             </div>
           )}
 
