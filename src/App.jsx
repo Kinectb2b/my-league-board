@@ -14,6 +14,7 @@ import ProfilePage from './pages/ProfilePage'
 import AcceptInvitePage from './pages/AcceptInvitePage'
 import LandingPage from './pages/LandingPage'
 import TreasurerPage from './pages/TreasurerPage'
+import SafetyPage from './pages/SafetyPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading: authLoading } = useAuth()
@@ -40,6 +41,7 @@ function AppRoutes() {
       <Route path="/teams" element={<ProtectedRoute><TeamsPage /></ProtectedRoute>} />
       <Route path="/locations" element={<ProtectedRoute><LocationsPage /></ProtectedRoute>} />
       <Route path="/treasurer" element={<ProtectedRoute><TreasurerPage /></ProtectedRoute>} />
+      <Route path="/safety" element={<ProtectedRoute><SafetyPage /></ProtectedRoute>} />
       <Route path="/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
