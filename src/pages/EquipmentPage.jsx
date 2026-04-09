@@ -148,6 +148,12 @@ export default function EquipmentPage() {
   const availableQty = totalQty - assignedQty
   const repairQty = items.filter(i => ['broken','damaged','needs_repair'].includes(i.item_condition)).reduce((s, i) => s + i.quantity, 0)
 
+  const categoryCounts = {}
+  items.forEach(item => {
+    const cat = item.equipment_categories?.name || 'Uncategorized'
+    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1
+  })
+
   const cc = { 'new':'#16a34a','good':'#22c55e','fair':'#eab308','worn':'#f97316','damaged':'#ef4444','broken':'#dc2626','needs_repair':'#dc2626','retired':'#6b7280' }
   const sc = { 'available':'#16a34a','assigned':'#3b82f6','in_repair':'#f97316','lost':'#dc2626','retired':'#6b7280' }
 
@@ -159,6 +165,13 @@ export default function EquipmentPage() {
           <div>
             <h1>Equipment inventory</h1>
             <p className="text-muted">{totalQty} total · {availableQty} available · {assignedQty} assigned{repairQty > 0 ? ` · ${repairQty} needs repair` : ''}</p>
+            {Object.keys(categoryCounts).length > 0 && (
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                {Object.entries(categoryCounts).sort((a,b) => b[1] - a[1]).map(([cat, count]) => (
+                  <span key={cat} style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', background: 'var(--green-50)', border: '1px solid var(--green-200)', borderRadius: '10px', color: 'var(--green-700)', fontWeight: 500 }}>{cat}: {count}</span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="header-actions">
             {canEdit && <button className="btn-secondary" onClick={exportCSV}>Export CSV</button>}

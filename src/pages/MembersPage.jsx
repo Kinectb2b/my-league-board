@@ -44,6 +44,15 @@ export default function MembersPage() {
   }
 
   async function sendInvite(email, role) {
+    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      addToast('Please enter a valid email address', 'error')
+      return
+    }
+    const existingMember = members.find(m => m.profiles?.email === email)
+    if (existingMember) {
+      addToast('This person is already a member', 'error')
+      return
+    }
     const { data, error } = await supabase.from('invitations').insert({
       organization_id: currentOrg.id,
       email,
