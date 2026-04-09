@@ -25,6 +25,13 @@ export default function LocationsPage() {
 
   useEffect(() => { document.title = 'Locations | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
+  useEffect(() => {
+    function handleBeforeUnload(e) {
+      if (hasChanges) { e.preventDefault(); e.returnValue = '' }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasChanges])
 
   async function fetchAll() {
     setLoading(true)

@@ -36,6 +36,7 @@ export default function TeamsPage() {
   const [gearTeam, setGearTeam] = useState(null)
   const [showAssignGear, setShowAssignGear] = useState(null)
   const [bulkAssignDivision, setBulkAssignDivision] = useState(null)
+  const [teamSearch, setTeamSearch] = useState('')
 
   useEffect(() => { document.title = 'Teams | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
@@ -149,7 +150,7 @@ export default function TeamsPage() {
   }
 
   const filteredDivisions = divisions.filter(d => !filterSeason || d.season_id === filterSeason)
-  const filteredTeams = teams.filter(t => { const div = divisions.find(d => d.id === t.division_id); return div && (!filterSeason || div.season_id === filterSeason) })
+  const filteredTeams = teams.filter(t => { const div = divisions.find(d => d.id === t.division_id); const matchesSearch = !teamSearch || t.name.toLowerCase().includes(teamSearch.toLowerCase()); return div && (!filterSeason || div.season_id === filterSeason) && matchesSearch })
 
   const statusConfig = {
     building: { label: 'Building', color: '#f97316', bg: '#ffedd5' },
@@ -176,6 +177,7 @@ export default function TeamsPage() {
 
         {seasons.length > 0 && (
           <div className="filters-bar">
+            <input type="text" className="search-input" value={teamSearch} onChange={e => setTeamSearch(e.target.value)} placeholder="Search teams..." style={{ maxWidth: '200px' }} />
             <select value={filterSeason} onChange={e => setFilterSeason(e.target.value)}>
               <option value="">All seasons</option>
               {seasons.map(s => <option key={s.id} value={s.id}>{s.name}{s.is_active ? ' (active)' : ''}</option>)}

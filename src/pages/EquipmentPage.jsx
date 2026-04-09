@@ -164,7 +164,7 @@ export default function EquipmentPage() {
         <div className="page-header">
           <div>
             <h1>Equipment inventory</h1>
-            <p className="text-muted">{totalQty} total · {availableQty} available · {assignedQty} assigned{repairQty > 0 ? ` · ${repairQty} needs repair` : ''}</p>
+            <p className="text-muted">{items.length} items · {totalQty} stocked · {assignedQty} assigned{repairQty > 0 ? ` · ${repairQty} needs repair` : ''}</p>
             {Object.keys(categoryCounts).length > 0 && (
               <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                 {Object.entries(categoryCounts).sort((a,b) => b[1] - a[1]).map(([cat, count]) => (
