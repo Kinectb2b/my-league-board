@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useOrg } from '../contexts/OrgContext'
@@ -7,6 +7,12 @@ export default function Sidebar() {
   const { signOut, profile } = useAuth()
   const { currentOrg, userRole } = useOrg()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark')
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light')
+  }, [darkMode])
 
   const canSee = (page) => {
     const access = {
@@ -69,6 +75,9 @@ export default function Sidebar() {
             <div className="sidebar-user-name">{profile?.full_name || 'User'}</div>
             <div className="sidebar-user-email">{profile?.email || ''}</div>
           </div>
+          <button onClick={() => setDarkMode(!darkMode)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit', padding: '0.5rem 0', width: '100%', textAlign: 'center' }}>
+            {darkMode ? '☀️ Light mode' : '🌙 Dark mode'}
+          </button>
           <button className="btn-signout" onClick={signOut}>Sign out</button>
         </div>
       </aside>

@@ -209,7 +209,7 @@ export default function EquipmentPage() {
             onClose={() => { setShowAddModal(false); setEditingItem(null) }}
           />
         )}
-        {selectedItem && <ItemDetailModal item={selectedItem} locationStock={stockData} locations={locations} onClose={() => setSelectedItem(null)} />}
+        {selectedItem && <ItemDetailModal item={selectedItem} locationStock={stockData} locations={locations} canEdit={canEdit} onClose={() => { setSelectedItem(null); fetchAll() }} />}
       </main>
       <style>{`
         .btn-icon-sm { background:none; border:none; color:var(--gray-400); cursor:pointer; font-size:0.85rem; padding:0.2rem 0.4rem; border-radius:4px; transition:color .15s,background .15s; line-height:1; }
@@ -220,9 +220,33 @@ export default function EquipmentPage() {
   )
 }
 
-function ItemDetailModal({ item, locationStock, locations, onClose }) {
+function ItemDetailModal({ item, locationStock, locations, canEdit, onClose }) {
+  const { addToast } = useToast()
   const itemStock = locationStock.filter(s => s.equipment_item_id === item.id)
   const totalStocked = itemStock.reduce((sum, s) => sum + s.quantity, 0)
+  const [showQuickStock, setShowQuickStock] = useState(false)
+  const [stockLocId, setStockLocId] = useState('')
+  const [stockQty, setStockQty] = useState(1)
+  const [stockSubmitting, setStockSubmitting] = useState(false)
+
+  async function quickAddStock() {
+    if (!stockLocId || stockQty < 1) return
+    setStockSubmitting(true)
+    const existing = locationStock.find(s => s.equipment_item_id === item.id && s.storage_location_id === stockLocId)
+    if (existing) {
+      await supabase.from('location_stock').update({ quantity: existing.quantity + stockQty }).eq('id', existing.id)
+    } else {
+      await supabase.from('location_stock').insert({
+        organization_id: item.organization_id,
+        equipment_item_id: item.id,
+        storage_location_id: stockLocId,
+        quantity: stockQty
+      })
+    }
+    addToast(`Added ${stockQty} to location`)
+    setStockSubmitting(false)
+    onClose()
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -253,6 +277,30 @@ function ItemDetailModal({ item, locationStock, locations, onClose }) {
                   </div>
                 )
               })}
+            </div>
+          )}
+
+          {canEdit && (
+            <div style={{ marginTop: '1rem' }}>
+              {!showQuickStock ? (
+                <button className="btn-secondary" onClick={() => setShowQuickStock(true)} style={{ fontSize: '0.85rem' }}>+ Quick stock at location</button>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+                  <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>Location</label>
+                    <select value={stockLocId} onChange={e => setStockLocId(e.target.value)} style={{ padding: '0.35rem', fontSize: '0.85rem', fontFamily: 'inherit', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius)' }}>
+                      <option value="">Select...</option>
+                      {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ width: '70px', marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.75rem' }}>Qty</label>
+                    <input type="number" min="1" value={stockQty} onChange={e => setStockQty(parseInt(e.target.value) || 0)} style={{ padding: '0.35rem', fontSize: '0.85rem', fontFamily: 'inherit', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius)', width: '100%' }} />
+                  </div>
+                  <button className="btn-primary" onClick={quickAddStock} disabled={stockSubmitting || !stockLocId} style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}>{stockSubmitting ? '...' : 'Add'}</button>
+                  <button className="btn-icon-sm" onClick={() => setShowQuickStock(false)}>✕</button>
+                </div>
+              )}
             </div>
           )}
 
