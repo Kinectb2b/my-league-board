@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ totalItems: 0, totalQty: 0, assignedQty: 0, availableQty: 0, needsRepair: 0, teams: 0, locations: 0 })
   const [activities, setActivities] = useState([])
   const [checklist, setChecklist] = useState(null)
+  const [bagStats, setBagStats] = useState({ total: 0, building: 0, built: 0, pickedUp: 0, returned: 0 })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { if (currentOrg) fetchStats() }, [currentOrg])
@@ -18,14 +19,23 @@ export default function Dashboard() {
   async function fetchStats() {
     setLoading(true)
     const orgId = currentOrg.id
-    const [items, teams, locations, stock, activityResult, templatesResult] = await Promise.all([
+    const [items, teams, locations, stock, activityResult, templatesResult, seasonsResult] = await Promise.all([
       supabase.from('equipment_items').select('status, item_condition, quantity').eq('organization_id', orgId),
       supabase.from('teams').select('id', { count: 'exact' }).eq('organization_id', orgId),
       supabase.from('storage_locations').select('id, is_supply_room').eq('organization_id', orgId),
       supabase.from('location_stock').select('quantity').eq('organization_id', orgId),
       supabase.from('activity_log').select('*, profiles!actor_id(full_name)').eq('organization_id', orgId).order('created_at', { ascending: false }).limit(10),
-      supabase.from('kit_templates').select('id', { count: 'exact' }).eq('organization_id', orgId)
+      supabase.from('kit_templates').select('id', { count: 'exact' }).eq('organization_id', orgId),
+      supabase.from('seasons').select('id, name, is_active').eq('organization_id', orgId)
     ])
+    const activeSeason = (seasonsResult.data || []).find(s => s.is_active)
+    if (activeSeason) {
+      const bagsResult = await supabase.from('team_bags').select('status').eq('organization_id', orgId).eq('season_id', activeSeason.id)
+      const bags = bagsResult.data || []
+      setBagStats({ total: bags.length, building: bags.filter(b => b.status === 'building').length, built: bags.filter(b => b.status === 'built').length, pickedUp: bags.filter(b => b.status === 'picked_up').length, returned: bags.filter(b => b.status === 'returned').length })
+    } else {
+      setBagStats({ total: 0, building: 0, built: 0, pickedUp: 0, returned: 0 })
+    }
     const d = items.data || []
     const stockTotal = (stock.data || []).reduce((s, r) => s + r.quantity, 0)
     const itemTotal = d.reduce((s, i) => s + i.quantity, 0)
@@ -88,6 +98,19 @@ export default function Dashboard() {
             <div className="stat-card">
               <div className="stat-number">{stats.locations}</div>
               <div className="stat-label">Storage locations</div>
+            </div>
+          </div>
+        )}
+
+        {bagStats.total > 0 && (
+          <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--gray-700)', marginBottom: '0.75rem' }}>Gear bag status</h2>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+              {bagStats.building > 0 && <div style={{ background: '#ffedd5', border: '1px solid #fed7aa', borderRadius: 'var(--radius)', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ fontSize: '1.2rem', fontWeight: 700, color: '#f97316' }}>{bagStats.building}</span><span style={{ fontSize: '0.8rem', color: '#ea580c' }}>Building</span></div>}
+              {bagStats.built > 0 && <div style={{ background: '#dbeafe', border: '1px solid #bfdbfe', borderRadius: 'var(--radius)', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ fontSize: '1.2rem', fontWeight: 700, color: '#3b82f6' }}>{bagStats.built}</span><span style={{ fontSize: '0.8rem', color: '#1e40af' }}>Ready</span></div>}
+              {bagStats.pickedUp > 0 && <div style={{ background: '#ede9fe', border: '1px solid #ddd6fe', borderRadius: 'var(--radius)', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ fontSize: '1.2rem', fontWeight: 700, color: '#8b5cf6' }}>{bagStats.pickedUp}</span><span style={{ fontSize: '0.8rem', color: '#6d28d9' }}>Picked up</span></div>}
+              {bagStats.returned > 0 && <div style={{ background: '#d4edda', border: '1px solid #b7dfc3', borderRadius: 'var(--radius)', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ fontSize: '1.2rem', fontWeight: 700, color: '#16a34a' }}>{bagStats.returned}</span><span style={{ fontSize: '0.8rem', color: '#15803d' }}>Returned</span></div>}
+              <div style={{ background: 'var(--gray-50)', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--gray-700)' }}>{bagStats.total}</span><span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>Total bags</span></div>
             </div>
           </div>
         )}

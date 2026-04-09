@@ -57,6 +57,10 @@ export default function TeamsPage() {
 
   function getTeamBag(teamId) { return bags.find(b => b.team_id === teamId && b.season_id === filterSeason) }
 
+  async function duplicateTeam(team) {
+    const { error } = await supabase.from('teams').insert({ organization_id: currentOrg.id, name: team.name + ' (copy)', division_id: team.division_id, color: team.color })
+    if (!error) { addToast('Team duplicated'); fetchAll() }
+  }
   async function deleteTeam(id, name) { if (!confirm(`Delete team "${name}"?`)) return; await supabase.from('teams').delete().eq('id', id); fetchAll() }
   async function deleteDivision(id, name) { const dt = teams.filter(t => t.division_id === id); if (dt.length > 0) { alert(`Cannot delete — has ${dt.length} team(s).`); return }; if (!confirm(`Delete "${name}"?`)) return; await supabase.from('divisions').delete().eq('id', id); fetchAll() }
   async function deleteSport(id, name) { const sd = divisions.filter(d => d.sport_type_id === id); if (sd.length > 0) { alert(`Cannot delete — has ${sd.length} division(s).`); return }; if (!confirm(`Delete "${name}"?`)) return; await supabase.from('sport_types').delete().eq('id', id); fetchAll() }
@@ -240,6 +244,7 @@ export default function TeamsPage() {
                                     )}
                                   </div>
                                   {canEdit && <div className="team-row-actions">
+                                    <button className="btn-icon-sm" onClick={() => duplicateTeam(team)} title="Duplicate">⧉</button>
                                     <button className="btn-icon-sm" onClick={() => setEditingTeam(team)}>✎</button>
                                     <button className="btn-icon-sm btn-icon-danger" onClick={() => deleteTeam(team.id, team.name)}>✕</button>
                                   </div>}

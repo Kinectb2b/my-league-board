@@ -125,6 +125,9 @@ export default function EquipmentPage() {
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="available">Available</option><option value="assigned">Assigned</option><option value="in_repair">In repair</option><option value="lost">Lost</option><option value="retired">Retired</option></select>
           <select value={filterCondition} onChange={e => setFilterCondition(e.target.value)}><option value="">All conditions</option><option value="new">New</option><option value="good">Good</option><option value="fair">Fair</option><option value="worn">Worn</option><option value="damaged">Damaged</option><option value="broken">Broken</option><option value="needs_repair">Needs repair</option></select>
           <select value={filterLocation} onChange={e => setFilterLocation(e.target.value)}><option value="">All locations</option><option value="unassigned">Unassigned</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
+          {(searchTerm || filterCategory || filterStatus || filterCondition || filterLocation) && (
+            <button onClick={() => { setSearchTerm(''); setFilterCategory(''); setFilterStatus(''); setFilterCondition(''); setFilterLocation('') }} style={{ background: 'none', border: 'none', color: 'var(--green-600)', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>Clear all filters</button>
+          )}
         </div>
 
         {loading ? <div className="loading-state">Loading...</div> : filtered.length === 0 ? (
