@@ -11,6 +11,7 @@ import LocationsPage from './pages/LocationsPage'
 import MembersPage from './pages/MembersPage'
 import SettingsPage from './pages/SettingsPage'
 import AcceptInvitePage from './pages/AcceptInvitePage'
+import LandingPage from './pages/LandingPage'
 
 function ProtectedRoute({ children }) {
   const { user, loading: authLoading } = useAuth()
@@ -39,7 +40,8 @@ function AppRoutes() {
       <Route path="/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/accept-invite" element={<AcceptInvitePage />} />
-      <Route path="*" element={<Navigate to="/dashboard" />} />
+      <Route path="/" element={user ? <Navigate to="/dashboard" /> : <LandingPage />} />
+      <Route path="*" element={user ? <Navigate to="/dashboard" /> : <Navigate to="/" />} />
     </Routes>
   )
 }
