@@ -64,7 +64,7 @@ export default function Sidebar() {
             <span className="nav-icon">🏠</span> Locations
           </NavLink>}
           {canSee('members') && <NavLink to="/members" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
-            <span className="nav-icon">👤</span> Members
+            <span className="nav-icon">👤</span> Board
           </NavLink>}
           {canSee('settings') && <NavLink to="/settings" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">⚙️</span> Settings

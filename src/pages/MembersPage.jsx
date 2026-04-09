@@ -1,52 +1,68 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { supabase } from '../lib/supabase'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
-import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { friendlyError } from '../lib/errors'
 import { logActivity } from '../lib/activity'
 import Sidebar from '../components/Sidebar'
 
 export default function MembersPage() {
-  const { currentOrg } = useOrg()
+  const { currentOrg, userRole } = useOrg()
   const { user } = useAuth()
   const { addToast } = useToast()
+  const [positions, setPositions] = useState([])
   const [members, setMembers] = useState([])
-  const [invitations, setInvitations] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showAddMemberModal, setShowAddMemberModal] = useState(false)
+  const [showAddMember, setShowAddMember] = useState(false)
+  const [assigningPosition, setAssigningPosition] = useState(null)
+  const canEdit = userRole === 'admin'
 
-  useEffect(() => { document.title = 'Members | My League Board' }, [])
-  useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
+  useEffect(() => { document.title = 'Board Directory | My League Board' }, [])
 
-  async function fetchAll() {
+  const fetchAll = useCallback(async () => {
+    if (!currentOrg) return
     setLoading(true)
-    const [m, i] = await Promise.all([
-      supabase.from('organization_members').select('*, profiles!profile_id(full_name, email)').eq('organization_id', currentOrg.id),
-      supabase.from('invitations').select('*').eq('organization_id', currentOrg.id).is('accepted_at', null)
+    const orgId = currentOrg.id
+
+    const [posRes, memRes] = await Promise.all([
+      supabase.from('board_positions').select('*, profiles:assigned_to(id, full_name, email, phone)').eq('organization_id', orgId).order('sort_order'),
+      supabase.from('organization_members').select('*, profiles!profile_id(id, full_name, email, phone)').eq('organization_id', orgId)
     ])
-    setMembers(m.data || [])
-    setInvitations(i.data || [])
+
+    setPositions(posRes.data || [])
+    setMembers(memRes.data || [])
     setLoading(false)
+  }, [currentOrg])
+
+  useEffect(() => { fetchAll() }, [fetchAll])
+
+  async function assignPosition(positionId, profileId) {
+    const { error } = await supabase.from('board_positions').update({
+      assigned_to: profileId || null,
+      appointed_date: profileId ? new Date().toISOString().split('T')[0] : null
+    }).eq('id', positionId)
+    if (error) addToast(friendlyError(error), 'error')
+    else {
+      const pos = positions.find(p => p.id === positionId)
+      const member = members.find(m => m.profile_id === profileId)
+      addToast(profileId ? `${member?.profiles?.full_name || 'Member'} assigned to ${pos?.title}` : `${pos?.title} unassigned`)
+      logActivity(currentOrg.id, profileId ? 'position assigned' : 'position unassigned', 'board', pos?.title, profileId ? member?.profiles?.full_name : null)
+      fetchAll()
+    }
   }
 
-  async function updateRole(memberId, newRole) {
+  async function changeRole(memberId, newRole) {
     const { error } = await supabase.from('organization_members').update({ role: newRole }).eq('id', memberId)
     if (error) addToast(friendlyError(error), 'error')
-    else { addToast('Role updated'); fetchAll(); logActivity(currentOrg.id, 'changed role', 'member', null) }
+    else { addToast('Role updated'); fetchAll() }
   }
 
-  async function removeMember(memberId, name) {
-    if (!confirm('Remove ' + name + ' from the league?')) return
-    const { error } = await supabase.from('organization_members').delete().eq('id', memberId)
-    if (error) addToast(friendlyError(error), 'error')
-    else { addToast(name + ' removed'); fetchAll(); logActivity(currentOrg.id, 'removed', 'member', name) }
-  }
-
-  async function cancelInvite(inviteId) {
-    await supabase.from('invitations').delete().eq('id', inviteId)
-    addToast('Invitation cancelled')
-    fetchAll()
+  async function removeMember(member) {
+    if (member.profile_id === user.id) { addToast("You can't remove yourself", 'error'); return }
+    if (!confirm(`Remove ${member.profiles?.full_name || member.profiles?.email}? They will lose access to this league.`)) return
+    const { error } = await supabase.from('organization_members').delete().eq('id', member.id)
+    if (!error) { addToast('Member removed'); logActivity(currentOrg.id, 'member removed', 'member', member.profiles?.full_name); fetchAll() }
   }
 
   const roleLabels = {
@@ -57,112 +73,151 @@ export default function MembersPage() {
     volunteer: 'Volunteer'
   }
 
-  const roleColors = {
-    admin: { bg: '#ede9fe', color: '#7c3aed' },
-    equipment_manager: { bg: '#d4edda', color: '#16a34a' },
-    coach: { bg: '#dbeafe', color: '#3b82f6' },
-    board_member: { bg: '#fdf3d0', color: '#92700c' },
-    volunteer: { bg: '#f3f4f6', color: '#6b7280' }
-  }
+  if (loading) return (
+    <div className="app-layout">
+      <Sidebar />
+      <main className="main-content">
+        <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div>
+      </main>
+    </div>
+  )
+
+  const filledPositions = positions.filter(p => p.assigned_to)
+  const vacantPositions = positions.filter(p => !p.assigned_to)
 
   return (
     <div className="app-layout">
       <Sidebar />
       <main className="main-content">
-        <div className="page-header">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
-            <h1>Members</h1>
-            <p className="text-muted">{members.length} member{members.length !== 1 ? 's' : ''}{invitations.length > 0 ? ` · ${invitations.length} pending invite${invitations.length !== 1 ? 's' : ''}` : ''}</p>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Board Directory</h1>
+            <p className="text-muted">{filledPositions.length} of {positions.length} positions filled · {members.length} members</p>
           </div>
-          <button className="btn-primary" onClick={() => setShowAddMemberModal(true)}>+ Add member</button>
+          {canEdit && <button className="btn-primary" onClick={() => setShowAddMember(true)}>+ Add member</button>}
         </div>
 
-        {loading ? <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div> : (
-          <>
-            <div className="table-container">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Role</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {members.map(m => (
-                    <tr key={m.id}>
-                      <td><strong>{m.profiles?.full_name || 'Unknown'}</strong></td>
-                      <td>{m.profiles?.email || '—'}</td>
-                      <td>
-                        <select
-                          value={m.role}
-                          onChange={e => updateRole(m.id, e.target.value)}
-                          disabled={m.profile_id === user.id}
-                          style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--gray-200)', borderRadius: '4px', fontSize: '0.85rem', fontFamily: 'inherit', background: roleColors[m.role]?.bg || '#f3f4f6', color: roleColors[m.role]?.color || '#6b7280', fontWeight: 600 }}
-                        >
+        {/* Board Positions */}
+        <div style={{ marginBottom: '2rem' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-700)' }}>Board of Directors</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.75rem' }}>
+            {positions.map(pos => (
+              <div key={pos.id} style={{
+                background: 'white',
+                border: pos.assigned_to ? '1px solid var(--green-200)' : '1px dashed var(--gray-300)',
+                borderRadius: 'var(--radius-lg)',
+                padding: '1rem',
+                opacity: pos.assigned_to ? 1 : 0.75
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: '0.95rem' }}>{pos.title}</div>
+                    {pos.is_required && <span style={{ fontSize: '0.65rem', background: 'var(--green-50)', color: 'var(--green-700)', padding: '0.1rem 0.4rem', borderRadius: '6px', fontWeight: 500 }}>Required</span>}
+                  </div>
+                </div>
+                <p className="text-muted" style={{ fontSize: '0.75rem', lineHeight: 1.4, marginBottom: '0.75rem' }}>{pos.description}</p>
+
+                {pos.assigned_to ? (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--green-50)', borderRadius: 'var(--radius)', padding: '0.5rem 0.75rem' }}>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{pos.profiles?.full_name || 'Unknown'}</div>
+                      <div className="text-muted" style={{ fontSize: '0.7rem' }}>{pos.profiles?.email}{pos.profiles?.phone ? ' · ' + pos.profiles.phone : ''}</div>
+                      {pos.appointed_date && <div className="text-muted" style={{ fontSize: '0.65rem' }}>Since {new Date(pos.appointed_date).toLocaleDateString()}</div>}
+                    </div>
+                    {canEdit && <button className="btn-small" onClick={() => assignPosition(pos.id, null)} style={{ fontSize: '0.7rem', color: 'var(--red-500)', background: 'none', border: 'none', cursor: 'pointer' }}>Unassign</button>}
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '0.5rem' }}>
+                    {canEdit ? (
+                      <button className="btn-secondary" onClick={() => setAssigningPosition(pos)} style={{ fontSize: '0.8rem', width: '100%' }}>Assign member</button>
+                    ) : (
+                      <span className="text-muted" style={{ fontSize: '0.8rem', fontStyle: 'italic' }}>Vacant</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* All Members */}
+        <div>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-700)' }}>All Members</h2>
+          <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+            <table className="data-table" style={{ marginBottom: 0 }}>
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead>
+              <tbody>
+                {members.map(m => (
+                  <tr key={m.id}>
+                    <td style={{ fontWeight: 500 }}>{m.profiles?.full_name || '—'}</td>
+                    <td>{m.profiles?.email}</td>
+                    <td>
+                      {canEdit && m.profile_id !== user.id ? (
+                        <select value={m.role} onChange={e => changeRole(m.id, e.target.value)} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', fontFamily: 'inherit', background: 'white' }}>
                           <option value="admin">President / Admin</option>
                           <option value="equipment_manager">Equipment Manager</option>
                           <option value="coach">Coach</option>
                           <option value="board_member">Board Member</option>
                           <option value="volunteer">Volunteer</option>
                         </select>
-                      </td>
-                      <td>
-                        {m.profile_id !== user.id && (
-                          <button className="btn-icon-sm btn-icon-danger" onClick={() => removeMember(m.id, m.profiles?.full_name)} title="Remove member">✕</button>
-                        )}
-                        {m.profile_id === user.id && <span className="text-muted" style={{ fontSize: '0.75rem' }}>You</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      ) : (
+                        <span style={{ fontSize: '0.8rem' }}>{roleLabels[m.role] || m.role}{m.profile_id === user.id ? ' (You)' : ''}</span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      {canEdit && m.profile_id !== user.id && (
+                        <button onClick={() => removeMember(m)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-500)', fontSize: '0.8rem' }}>Remove</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-            {invitations.length > 0 && (
-              <div style={{ marginTop: '2rem' }}>
-                <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-700)' }}>Pending invitations</h2>
-                <div className="table-container">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Email</th>
-                        <th>Role</th>
-                        <th>Sent</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invitations.map(inv => (
-                        <tr key={inv.id}>
-                          <td>{inv.email}</td>
-                          <td><span className="badge" style={{ backgroundColor: roleColors[inv.role]?.bg, color: roleColors[inv.role]?.color }}>{roleLabels[inv.role]}</span></td>
-                          <td className="text-muted">{new Date(inv.created_at).toLocaleDateString()}</td>
-                          <td><button className="btn-icon-sm btn-icon-danger" onClick={() => cancelInvite(inv.id)} title="Cancel invite">✕</button></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+        {/* Assign Position Modal */}
+        {assigningPosition && (
+          <div className="modal-overlay" onClick={() => setAssigningPosition(null)}>
+            <div className="modal" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Assign {assigningPosition.title}</h2>
+                <button className="btn-icon" onClick={() => setAssigningPosition(null)}>✕</button>
+              </div>
+              <div className="modal-form">
+                <p className="text-muted" style={{ marginBottom: '1rem' }}>{assigningPosition.description}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {members.map(m => (
+                    <button key={m.id} onClick={() => { assignPosition(assigningPosition.id, m.profile_id); setAssigningPosition(null) }} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      padding: '0.65rem 0.75rem', background: 'var(--gray-50)', border: '1px solid var(--gray-200)',
+                      borderRadius: 'var(--radius)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left'
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{m.profiles?.full_name || 'Unknown'}</div>
+                        <div className="text-muted" style={{ fontSize: '0.75rem' }}>{m.profiles?.email}</div>
+                      </div>
+                      <span style={{ color: 'var(--green-600)', fontWeight: 500, fontSize: '0.8rem' }}>Assign →</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="modal-actions" style={{ marginTop: '1rem' }}>
+                  <button className="btn-secondary" onClick={() => setAssigningPosition(null)}>Cancel</button>
                 </div>
               </div>
-            )}
-          </>
+            </div>
+          </div>
         )}
 
-        {showAddMemberModal && (
+        {/* Add Member Modal */}
+        {showAddMember && (
           <AddMemberModal
             orgId={currentOrg.id}
-            onClose={() => setShowAddMemberModal(false)}
+            onClose={() => setShowAddMember(false)}
             onAdded={fetchAll}
           />
         )}
       </main>
-      <style>{`
-        .btn-icon-sm { background: none; border: none; color: var(--gray-400); cursor: pointer; font-size: 0.85rem; padding: 0.2rem 0.4rem; border-radius: 4px; transition: color 0.15s, background 0.15s; line-height: 1; }
-        .btn-icon-sm:hover { color: var(--green-700); background: var(--green-100); }
-        .btn-icon-danger:hover { color: var(--red-500) !important; background: var(--red-100) !important; }
-      `}</style>
     </div>
   )
 }
