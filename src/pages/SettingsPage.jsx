@@ -13,6 +13,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [editingTemplate, setEditingTemplate] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
+  const [seasons, setSeasons] = useState([])
+  const [sportTypes, setSportTypes] = useState([])
   const [orgName, setOrgName] = useState(currentOrg?.name || '')
   const [orgDescription, setOrgDescription] = useState(currentOrg?.description || '')
   const [savingOrg, setSavingOrg] = useState(false)
@@ -23,12 +25,14 @@ export default function SettingsPage() {
   async function fetchAll() {
     setLoading(true)
     const orgId = currentOrg.id
-    const [t, c, e] = await Promise.all([
+    const [t, c, e, sn, sp] = await Promise.all([
       supabase.from('kit_templates').select('*, kit_template_items(*, equipment_categories(name), equipment_items(name))').eq('organization_id', orgId),
       supabase.from('equipment_categories').select('*').eq('organization_id', orgId).order('name'),
-      supabase.from('equipment_items').select('*, equipment_categories(name)').eq('organization_id', orgId).order('name')
+      supabase.from('equipment_items').select('*, equipment_categories(name)').eq('organization_id', orgId).order('name'),
+      supabase.from('seasons').select('*').eq('organization_id', orgId).order('created_at', { ascending: false }),
+      supabase.from('sport_types').select('*').eq('organization_id', orgId).order('name')
     ])
-    setTemplates(t.data || []); setCategories(c.data || []); setEquipment(e.data || []); setLoading(false)
+    setTemplates(t.data || []); setCategories(c.data || []); setEquipment(e.data || []); setSeasons(sn.data || []); setSportTypes(sp.data || []); setLoading(false)
   }
 
   async function deleteTemplate(id, name) {
@@ -128,6 +132,29 @@ export default function SettingsPage() {
                       ))}
                     </div>
                   )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginTop: '2rem' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem' }}>Seasons</h2>
+          {seasons.length === 0 ? (
+            <div className="empty-state"><p>No seasons yet.</p></div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {seasons.map(s => (
+                <div key={s.id} style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', padding: '0.75rem 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <strong>{s.name}</strong>
+                    {s.is_active && <span style={{ marginLeft: '0.5rem', background: '#d4edda', color: '#16a34a', fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.4rem', borderRadius: '10px' }}>Active</span>}
+                    {s.start_date && <span className="text-muted" style={{ marginLeft: '0.75rem', fontSize: '0.8rem' }}>{new Date(s.start_date).toLocaleDateString()} — {s.end_date ? new Date(s.end_date).toLocaleDateString() : 'ongoing'}</span>}
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {!s.is_active && <button className="btn-small" onClick={async () => { await supabase.from('seasons').update({ is_active: false }).eq('organization_id', currentOrg.id); await supabase.from('seasons').update({ is_active: true }).eq('id', s.id); addToast('Season activated'); fetchAll() }}>Set active</button>}
+                    {s.is_active && <span className="text-muted" style={{ fontSize: '0.8rem' }}>Current</span>}
+                  </div>
                 </div>
               ))}
             </div>
