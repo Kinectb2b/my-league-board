@@ -195,7 +195,7 @@ export default function EquipmentPage() {
         ) : (
           <div className="table-container">
             <table className="data-table">
-              <thead><tr><th>Name</th><th>Category</th><th>Qty</th><th>Condition</th><th>Status</th><th></th></tr></thead>
+              <thead><tr><th>Name</th><th>Category</th><th>Qty</th><th>Condition</th><th>Status</th><th>Tag</th><th></th></tr></thead>
               <tbody>
                 {filtered.map(item => (
                   <tr key={item.id} onClick={() => setSelectedItem(item)} style={{ cursor: 'pointer' }}>
@@ -204,6 +204,7 @@ export default function EquipmentPage() {
                     <td>{getItemStockedQty(item.id) || item.quantity}</td>
                     <td><span className="badge" style={{ backgroundColor:(cc[item.item_condition]||'#6b7280')+'20', color:cc[item.item_condition]||'#6b7280' }}>{item.item_condition.replace('_',' ')}</span></td>
                     <td><span className="badge" style={{ backgroundColor:(sc[item.status]||'#6b7280')+'20', color:sc[item.status]||'#6b7280' }}>{item.status.replace('_',' ')}</span></td>
+                    <td className="text-muted" style={{ fontSize: '0.8rem' }}>{item.tag_number || '—'}</td>
                     {canEdit && <td><div style={{display:'flex',gap:'0.25rem'}}><button className="btn-icon-sm" onClick={() => setEditingItem(item)} title="Edit">✎</button><button className="btn-icon-sm btn-icon-danger" onClick={() => deleteItem(item.id)} title="Delete">✕</button></div></td>}
                   </tr>
                 ))}
@@ -241,6 +242,18 @@ function ItemDetailModal({ item, locationStock, locations, canEdit, onClose }) {
   const [stockLocId, setStockLocId] = useState('')
   const [stockQty, setStockQty] = useState(1)
   const [stockSubmitting, setStockSubmitting] = useState(false)
+  const [history, setHistory] = useState([])
+
+  useEffect(() => {
+    supabase.from('activity_log')
+      .select('action, details, created_at')
+      .eq('organization_id', item.organization_id)
+      .eq('entity_type', 'equipment')
+      .eq('entity_name', item.name)
+      .order('created_at', { ascending: false })
+      .limit(10)
+      .then(({ data }) => setHistory(data || []))
+  }, [item])
 
   async function quickAddStock() {
     if (!stockLocId || stockQty < 1) return
@@ -321,6 +334,20 @@ function ItemDetailModal({ item, locationStock, locations, canEdit, onClose }) {
             <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--gray-50)', borderRadius: 'var(--radius)', border: '1px solid var(--gray-100)' }}>
               <span className="text-muted" style={{ fontSize: '0.8rem' }}>Notes</span>
               <p style={{ marginTop: '0.25rem', fontSize: '0.9rem' }}>{item.notes}</p>
+            </div>
+          )}
+
+          {history.length > 0 && (
+            <div style={{ marginTop: '1rem' }}>
+              <h3 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--gray-600)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>History</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                {history.map((h, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.3rem 0', borderBottom: '1px solid var(--gray-100)', fontSize: '0.8rem' }}>
+                    <span>{h.action}{h.details ? ': ' + h.details : ''}</span>
+                    <span className="text-muted">{new Date(h.created_at).toLocaleDateString()}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

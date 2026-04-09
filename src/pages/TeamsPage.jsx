@@ -282,7 +282,7 @@ export default function TeamsPage() {
         {editingTeam && <EditTeamModal team={editingTeam} divisions={divisions} members={members} onDone={() => { setEditingTeam(null); fetchAll() }} onClose={() => setEditingTeam(null)} />}
         {editingDivision && <EditDivisionModal division={editingDivision} seasons={seasons} sportTypes={sportTypes} onDone={() => { setEditingDivision(null); fetchAll() }} onClose={() => setEditingDivision(null)} />}
         {showAssignGear && <AssignGearModal team={showAssignGear} templates={templates} onAssign={createBagFromTemplate} onClose={() => setShowAssignGear(null)} />}
-        {gearTeam && <GearDetailModal team={gearTeam} bag={getTeamBag(gearTeam.id)} statusConfig={statusConfig} onToggle={togglePacked} onMarkBuilt={markBuilt} onPickup={markPickedUp} onReturn={markReturned} onReplace={replaceItem} onRemove={removeBagItem} onDelete={deleteBag} onPrint={printChecklist} onClose={() => { setGearTeam(null); fetchAll() }} />}
+        {gearTeam && <GearDetailModal team={gearTeam} bag={getTeamBag(gearTeam.id)} statusConfig={statusConfig} canEdit={canEdit} onToggle={togglePacked} onMarkBuilt={markBuilt} onPickup={markPickedUp} onReturn={markReturned} onReplace={replaceItem} onRemove={removeBagItem} onDelete={deleteBag} onPrint={printChecklist} onClose={() => { setGearTeam(null); fetchAll() }} />}
         {bulkAssignDivision && (
           <BulkAssignModal
             division={bulkAssignDivision}
@@ -423,11 +423,18 @@ function AssignGearModal({ team, templates, onAssign, onClose }) {
   )
 }
 
-function GearDetailModal({ team, bag, statusConfig, onToggle, onMarkBuilt, onPickup, onReturn, onReplace, onRemove, onDelete, onPrint, onClose }) {
+function GearDetailModal({ team, bag, statusConfig, canEdit, onToggle, onMarkBuilt, onPickup, onReturn, onReplace, onRemove, onDelete, onPrint, onClose }) {
   const [showPickup, setShowPickup] = useState(false)
   const [showReturn, setShowReturn] = useState(false)
   const [showReplace, setShowReplace] = useState(null)
   const [showAddItem, setShowAddItem] = useState(false)
+  const [bagTag, setBagTag] = useState(bag?.bag_tag || '')
+
+  async function saveBagTag() {
+    if (bagTag !== (bag.bag_tag || '')) {
+      await supabase.from('team_bags').update({ bag_tag: bagTag }).eq('id', bag.id)
+    }
+  }
 
   if (!bag) { onClose(); return null }
 
@@ -467,6 +474,15 @@ function GearDetailModal({ team, bag, statusConfig, onToggle, onMarkBuilt, onPic
           <div className="gear-action-bar gear-action-success">Returned {new Date(bag.returned_at).toLocaleDateString()}{bag.returned_condition ? ` · ${bag.returned_condition}` : ''}</div>
         )}
         {bag.built_by && <p className="text-muted" style={{ fontSize: '0.8rem' }}>Built by {bag.profiles?.full_name}{bag.built_at ? ` on ${new Date(bag.built_at).toLocaleDateString()}` : ''}</p>}
+
+        {['building','built'].includes(bag.status) && canEdit ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <label style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--gray-600)' }}>Bag tag:</label>
+            <input type="text" value={bagTag} onChange={e => setBagTag(e.target.value)} onBlur={saveBagTag} placeholder="Enter tag #" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', width: '120px', fontFamily: 'inherit' }} />
+          </div>
+        ) : bag.bag_tag ? (
+          <div style={{ fontSize: '0.8rem', color: 'var(--gray-500)', marginBottom: '0.5rem' }}>Tag: {bag.bag_tag}</div>
+        ) : null}
 
         {required.length > 0 && (
           <div className="checklist-section">
