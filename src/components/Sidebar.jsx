@@ -21,6 +21,7 @@ export default function Sidebar() {
       equipment: ['admin','equipment_manager','board_member'],
       teams: ['admin','equipment_manager','coach','board_member','volunteer'],
       locations: ['admin','equipment_manager','board_member'],
+      treasurer: ['admin'],
       members: ['admin'],
       settings: ['admin','equipment_manager']
     }
@@ -62,6 +63,9 @@ export default function Sidebar() {
           </NavLink>}
           {canSee('locations') && <NavLink to="/locations" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">🏠</span> Locations
+          </NavLink>}
+          {canSee('treasurer') && <NavLink to="/treasurer" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <span className="nav-icon">💰</span> Treasurer
           </NavLink>}
           {canSee('members') && <NavLink to="/members" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">👤</span> Board
