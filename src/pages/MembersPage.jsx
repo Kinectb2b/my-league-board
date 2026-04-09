@@ -14,7 +14,7 @@ export default function MembersPage() {
   const [members, setMembers] = useState([])
   const [invitations, setInvitations] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showInvite, setShowInvite] = useState(false)
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false)
 
   useEffect(() => { document.title = 'Members | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
@@ -43,39 +43,6 @@ export default function MembersPage() {
     else { addToast(name + ' removed'); fetchAll(); logActivity(currentOrg.id, 'removed', 'member', name) }
   }
 
-  async function sendInvite(email, role) {
-    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      addToast('Please enter a valid email address', 'error')
-      return
-    }
-    const existingMember = members.find(m => m.profiles?.email === email)
-    if (existingMember) {
-      addToast('This person is already a member', 'error')
-      return
-    }
-    const { data, error } = await supabase.from('invitations').insert({
-      organization_id: currentOrg.id,
-      email,
-      role,
-      invited_by: user.id
-    }).select().single()
-    if (error) {
-      if (error.message.includes('duplicate')) addToast('This person has already been invited', 'error')
-      else addToast(friendlyError(error), 'error')
-      return
-    }
-    if (data) {
-      const inviteUrl = window.location.origin + '/accept-invite?token=' + data.token
-      navigator.clipboard.writeText(inviteUrl).catch(() => {})
-      addToast('Invite link copied to clipboard!')
-    } else {
-      addToast('Invitation created')
-    }
-    logActivity(currentOrg.id, 'invited', 'member', email, 'Role: ' + role)
-    setShowInvite(false)
-    fetchAll()
-  }
-
   async function cancelInvite(inviteId) {
     await supabase.from('invitations').delete().eq('id', inviteId)
     addToast('Invitation cancelled')
@@ -83,7 +50,7 @@ export default function MembersPage() {
   }
 
   const roleLabels = {
-    admin: 'Admin',
+    admin: 'President / Admin',
     equipment_manager: 'Equipment Manager',
     coach: 'Coach',
     board_member: 'Board Member',
@@ -107,7 +74,7 @@ export default function MembersPage() {
             <h1>Members</h1>
             <p className="text-muted">{members.length} member{members.length !== 1 ? 's' : ''}{invitations.length > 0 ? ` · ${invitations.length} pending invite${invitations.length !== 1 ? 's' : ''}` : ''}</p>
           </div>
-          <button className="btn-primary" onClick={() => setShowInvite(true)}>+ Invite member</button>
+          <button className="btn-primary" onClick={() => setShowAddMemberModal(true)}>+ Add member</button>
         </div>
 
         {loading ? <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div> : (
@@ -134,7 +101,7 @@ export default function MembersPage() {
                           disabled={m.profile_id === user.id}
                           style={{ padding: '0.3rem 0.5rem', border: '1px solid var(--gray-200)', borderRadius: '4px', fontSize: '0.85rem', fontFamily: 'inherit', background: roleColors[m.role]?.bg || '#f3f4f6', color: roleColors[m.role]?.color || '#6b7280', fontWeight: 600 }}
                         >
-                          <option value="admin">Admin</option>
+                          <option value="admin">President / Admin</option>
                           <option value="equipment_manager">Equipment Manager</option>
                           <option value="coach">Coach</option>
                           <option value="board_member">Board Member</option>
@@ -183,7 +150,13 @@ export default function MembersPage() {
           </>
         )}
 
-        {showInvite && <InviteModal onInvite={sendInvite} onClose={() => setShowInvite(false)} />}
+        {showAddMemberModal && (
+          <AddMemberModal
+            orgId={currentOrg.id}
+            onClose={() => setShowAddMemberModal(false)}
+            onAdded={fetchAll}
+          />
+        )}
       </main>
       <style>{`
         .btn-icon-sm { background: none; border: none; color: var(--gray-400); cursor: pointer; font-size: 0.85rem; padding: 0.2rem 0.4rem; border-radius: 4px; transition: color 0.15s, background 0.15s; line-height: 1; }
@@ -194,15 +167,85 @@ export default function MembersPage() {
   )
 }
 
-function InviteModal({ onInvite, onClose }) {
+function AddMemberModal({ orgId, onClose, onAdded }) {
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState('volunteer')
+  const [password, setPassword] = useState('')
+  const [role, setRole] = useState('coach')
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
+  const { addToast } = useToast()
+
+  function generateTempPassword() {
+    const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
+    let pw = ''
+    for (let i = 0; i < 8; i++) pw += chars[Math.floor(Math.random() * chars.length)]
+    setPassword(pw)
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) { setError('Please enter a valid email'); return }
+    if (password.length < 6) { setError('Password must be at least 6 characters'); return }
     setSubmitting(true)
-    await onInvite(email, role)
+    setError(null)
+
+    try {
+      // Step 1: Create the auth user via Supabase signUp
+      // The user will need to change their password on first login
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName }
+        }
+      })
+
+      if (signUpError) {
+        if (signUpError.message.includes('already registered')) {
+          setError('This email is already registered. They can sign in and you can add them manually.')
+          setSubmitting(false)
+          return
+        }
+        throw signUpError
+      }
+
+      const userId = signUpData.user?.id
+      if (!userId) throw new Error('Failed to create user account')
+
+      // Step 2: Create their profile
+      await supabase.from('profiles').upsert({
+        id: userId,
+        email,
+        full_name: fullName
+      })
+
+      // Step 3: Add them to the organization with the selected role
+      const { error: memberError } = await supabase.from('organization_members').insert({
+        organization_id: orgId,
+        profile_id: userId,
+        role
+      })
+
+      if (memberError) throw memberError
+
+      // Step 4: Log the activity
+      const { data: { user } } = await supabase.auth.getUser()
+      await supabase.from('activity_log').insert({
+        organization_id: orgId,
+        actor_id: user.id,
+        action: 'member added',
+        entity_type: 'member',
+        entity_name: fullName,
+        details: `Added as ${role}`
+      })
+
+      addToast(`${fullName} added as ${role}. Temp password: ${password}`, 'success')
+      onAdded()
+      onClose()
+    } catch (err) {
+      setError(err.message || 'Failed to add member')
+    }
     setSubmitting(false)
   }
 
@@ -210,28 +253,40 @@ function InviteModal({ onInvite, onClose }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Invite a member</h2>
+          <h2>Add a member</h2>
           <button className="btn-icon" onClick={onClose}>✕</button>
         </div>
         <form onSubmit={handleSubmit} className="modal-form">
+          {error && <div className="form-error">{error}</div>}
+          <div className="form-group">
+            <label>Full name *</label>
+            <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="John Smith" required />
+          </div>
           <div className="form-group">
             <label>Email address *</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="coach@example.com" required autoFocus />
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="john@example.com" required />
+          </div>
+          <div className="form-group">
+            <label>Temporary password *</label>
+            <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <input type="text" value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 6 characters" required style={{ flex: 1 }} />
+              <button type="button" className="btn-secondary" onClick={generateTempPassword} style={{ whiteSpace: 'nowrap' }}>Generate</button>
+            </div>
+            <span className="text-muted" style={{ fontSize: '0.75rem' }}>They'll change this after first login</span>
           </div>
           <div className="form-group">
             <label>Role *</label>
             <select value={role} onChange={e => setRole(e.target.value)}>
-              <option value="admin">Admin — full control</option>
-              <option value="equipment_manager">Equipment Manager — manages gear</option>
-              <option value="coach">Coach — views team gear</option>
-              <option value="board_member">Board Member — read-only</option>
-              <option value="volunteer">Volunteer — limited access</option>
+              <option value="admin">President / Admin — full control of everything</option>
+              <option value="equipment_manager">Equipment Manager — manages all gear and locations</option>
+              <option value="coach">Coach — views their team's gear status</option>
+              <option value="board_member">Board Member — read-only oversight of all areas</option>
+              <option value="volunteer">Volunteer — limited view for helpers</option>
             </select>
           </div>
-          <p className="text-muted" style={{ fontSize: '0.8rem' }}>They will receive an invitation to join your league. If they don't have an account, they'll need to create one first.</p>
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Sending...' : 'Send invitation'}</button>
+            <button type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Creating account...' : 'Add member'}</button>
           </div>
         </form>
       </div>

@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useOrg } from '../contexts/OrgContext'
 
 export default function Sidebar() {
   const { signOut, profile } = useAuth()
   const { currentOrg, userRole } = useOrg()
+  const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark')
 
@@ -72,8 +73,10 @@ export default function Sidebar() {
 
         <div className="sidebar-footer">
           <div className="sidebar-user">
-            <div className="sidebar-user-name">{profile?.full_name || 'User'}</div>
-            <div className="sidebar-user-email">{profile?.email || ''}</div>
+            <a href="/profile" onClick={(e) => { e.preventDefault(); setSidebarOpen(false); navigate('/profile') }} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <div className="sidebar-user-name">{profile?.full_name || 'User'}</div>
+              <div className="sidebar-user-email">{profile?.email || ''}</div>
+            </a>
           </div>
           <button onClick={() => setDarkMode(!darkMode)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit', padding: '0.5rem 0', width: '100%', textAlign: 'center' }}>
             {darkMode ? '☀️ Light mode' : '🌙 Dark mode'}

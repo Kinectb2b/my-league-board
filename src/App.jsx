@@ -10,6 +10,7 @@ import TeamsPage from './pages/TeamsPage'
 import LocationsPage from './pages/LocationsPage'
 import MembersPage from './pages/MembersPage'
 import SettingsPage from './pages/SettingsPage'
+import ProfilePage from './pages/ProfilePage'
 import AcceptInvitePage from './pages/AcceptInvitePage'
 import LandingPage from './pages/LandingPage'
 
@@ -39,6 +40,7 @@ function AppRoutes() {
       <Route path="/locations" element={<ProtectedRoute><LocationsPage /></ProtectedRoute>} />
       <Route path="/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/accept-invite" element={<AcceptInvitePage />} />
       <Route path="/" element={user ? <Navigate to="/dashboard" /> : <LandingPage />} />
       <Route path="*" element={user ? <Navigate to="/dashboard" /> : <Navigate to="/" />} />
