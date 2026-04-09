@@ -104,6 +104,9 @@ export default function AuthPage() {
             )}
           </div>
         </>)}
+        <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+          <a href="/" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textDecoration: 'none' }}>← Back to home</a>
+        </div>
       </div>
     </div>
   )

@@ -85,7 +85,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {loading ? <div className="loading-state">Loading...</div> : (
+        {loading ? <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div> : (
           <div className="stats-grid">
             <div className="stat-card">
               <div className="stat-number">{stats.totalQty}</div>

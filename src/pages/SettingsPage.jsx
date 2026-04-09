@@ -107,7 +107,7 @@ export default function SettingsPage() {
             <button className="btn-primary" onClick={() => setShowAdd(true)}>+ Create template</button>
           </div>
 
-          {loading ? <div className="loading-state">Loading...</div> : templates.length === 0 ? (
+          {loading ? <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div> : templates.length === 0 ? (
             <div className="empty-state"><p>No templates yet. Create one to define what goes in a team gear bag.</p></div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>

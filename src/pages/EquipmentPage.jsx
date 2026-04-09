@@ -190,7 +190,7 @@ export default function EquipmentPage() {
           )}
         </div>
 
-        {loading ? <div className="loading-state">Loading...</div> : filtered.length === 0 ? (
+        {loading ? <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div> : filtered.length === 0 ? (
           <div className="empty-state"><p>{items.length === 0 ? 'No equipment added yet.' : 'No items match your filters.'}</p></div>
         ) : (
           <div className="table-container">

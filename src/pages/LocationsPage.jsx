@@ -223,7 +223,7 @@ export default function LocationsPage() {
           </div>}
         </div>
 
-        {loading ? <div className="loading-state">Loading...</div> : (
+        {loading ? <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div> : (
           <div className="locations-layout">
             <div className="locations-list-panel">
               {locations.map(loc => {

@@ -110,7 +110,7 @@ export default function MembersPage() {
           <button className="btn-primary" onClick={() => setShowInvite(true)}>+ Invite member</button>
         </div>
 
-        {loading ? <div className="loading-state">Loading...</div> : (
+        {loading ? <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div> : (
           <>
             <div className="table-container">
               <table className="data-table">

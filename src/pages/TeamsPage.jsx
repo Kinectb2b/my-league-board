@@ -186,7 +186,7 @@ export default function TeamsPage() {
           </div>
         )}
 
-        {loading ? <div className="loading-state">Loading...</div> : sportTypes.length === 0 ? (
+        {loading ? <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div> : sportTypes.length === 0 ? (
           <div className="empty-state"><p>Start by adding your sports and a season.</p><div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', marginTop: '0.5rem' }}><button className="btn-primary" onClick={() => setShowAddSport(true)}>+ Add sport</button><button className="btn-secondary" onClick={() => setShowAddSeason(true)}>+ Add season</button></div></div>
         ) : seasons.length === 0 ? (
           <div className="empty-state"><p>Add a season to get started.</p><button className="btn-primary" onClick={() => setShowAddSeason(true)}>+ Add season</button></div>

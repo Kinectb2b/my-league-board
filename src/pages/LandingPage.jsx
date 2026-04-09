@@ -5,7 +5,7 @@ export default function LandingPage() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #1a472a 0%, #0d2818 100%)' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 3rem', maxWidth: '1200px', margin: '0 auto' }}>
+      <header className="landing-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 3rem', maxWidth: '1200px', margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <svg width="36" height="36" viewBox="0 0 48 48" fill="none"><rect width="48" height="48" rx="12" fill="rgba(255,255,255,0.1)"/><path d="M14 34V18L24 12L34 18V34" stroke="#f5f0e1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/><circle cx="24" cy="24" r="5" stroke="#e8b931" strokeWidth="2"/><line x1="24" y1="19" x2="24" y2="14" stroke="#e8b931" strokeWidth="2" strokeLinecap="round"/></svg>
           <span style={{ color: 'white', fontWeight: 700, fontSize: '1.2rem' }}>My League Board</span>
@@ -16,7 +16,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <main style={{ maxWidth: '1000px', margin: '0 auto', padding: '4rem 2rem', textAlign: 'center' }}>
+      <main className="landing-main landing-hero" style={{ maxWidth: '1000px', margin: '0 auto', padding: '4rem 2rem', textAlign: 'center' }}>
         <h1 style={{ color: 'white', fontSize: '3rem', fontWeight: 800, lineHeight: 1.1, marginBottom: '1.5rem' }}>
           Equipment management<br/>for youth sports leagues
         </h1>
@@ -25,7 +25,7 @@ export default function LandingPage() {
         </p>
         <button onClick={() => navigate('/auth')} style={{ background: '#e8b931', border: 'none', color: '#1a472a', padding: '0.85rem 2.5rem', borderRadius: '10px', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 700, fontSize: '1.1rem' }}>Start managing your gear →</button>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginTop: '5rem', textAlign: 'left' }}>
+        <div className="landing-features" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginTop: '5rem', textAlign: 'left' }}>
           <FeatureCard icon="📦" title="Equipment tracking" description="Smart forms for every type of gear. Bats, balls, helmets, catchers gear — all tracked with condition and status." />
           <FeatureCard icon="🏟️" title="Storage locations" description="Know where everything is stored. Board room, field sheds, base room. Transfer between locations with one click." />
           <FeatureCard icon="🎒" title="Team gear bags" description="Build kit templates, assign gear to teams, track the full lifecycle from packing to pickup to return." />
@@ -38,6 +38,16 @@ export default function LandingPage() {
       <footer style={{ textAlign: 'center', padding: '3rem 2rem', color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem' }}>
         © {new Date().getFullYear()} My League Board
       </footer>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .landing-hero h1 { font-size: 2rem !important; }
+          .landing-hero p { font-size: 1rem !important; }
+          .landing-header { padding: 1rem !important; }
+          .landing-features { grid-template-columns: 1fr !important; }
+          .landing-main { padding: 2rem 1rem !important; }
+        }
+      `}</style>
     </div>
   )
 }
