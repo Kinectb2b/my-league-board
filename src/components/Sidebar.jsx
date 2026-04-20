@@ -22,7 +22,7 @@ export default function Sidebar() {
       teams: ['admin','equipment_manager','coach','board_member','volunteer'],
       locations: ['admin','equipment_manager','board_member'],
       treasurer: ['admin'],
-      safety: ['admin'],
+      safety: ['admin', 'safety_officer'],
       members: ['admin'],
       settings: ['admin','equipment_manager']
     }
@@ -89,6 +89,11 @@ export default function Sidebar() {
           <button onClick={() => setDarkMode(!darkMode)} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit', padding: '0.5rem 0', width: '100%', textAlign: 'center' }}>
             {darkMode ? '☀️ Light mode' : '🌙 Dark mode'}
           </button>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', fontSize: '0.7rem', padding: '0.5rem 0', color: 'rgba(255,255,255,0.4)' }}>
+            <NavLink to="/privacy" style={{ color: 'inherit', textDecoration: 'none' }} onClick={() => setSidebarOpen(false)}>Privacy</NavLink>
+            <span>·</span>
+            <NavLink to="/terms" style={{ color: 'inherit', textDecoration: 'none' }} onClick={() => setSidebarOpen(false)}>Terms</NavLink>
+          </div>
           <button className="btn-signout" onClick={signOut}>Sign out</button>
         </div>
       </aside>

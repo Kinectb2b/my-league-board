@@ -17,7 +17,7 @@ export default function SafetyPage() {
   const [showAddIncident, setShowAddIncident] = useState(false)
   const [showAddCheck, setShowAddCheck] = useState(false)
   const [showAddKit, setShowAddKit] = useState(false)
-  const canEdit = ['admin'].includes(userRole)
+  const canEdit = ['admin', 'safety_officer'].includes(userRole)
 
   useEffect(() => { document.title = 'Safety | My League Board' }, [])
 
@@ -43,10 +43,12 @@ export default function SafetyPage() {
   const expiredChecks = checks.filter(c => c.status === 'expired' || (c.expiration_date && new Date(c.expiration_date) < new Date())).length
   const kitsNeedingAttention = kits.filter(k => k.status !== 'good').length
 
-  if (loading) return <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div>
+  if (loading) return (
+    <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div>
+  )
 
   return (
-    <div>
+    <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Safety Officer</h1>
@@ -158,7 +160,7 @@ export default function SafetyPage() {
       {showAddIncident && <AddIncidentModal orgId={currentOrg.id} userId={user.id} onClose={() => { setShowAddIncident(false); fetchAll() }} addToast={addToast} />}
       {showAddCheck && <AddCheckModal orgId={currentOrg.id} onClose={() => { setShowAddCheck(false); fetchAll() }} addToast={addToast} />}
       {showAddKit && <AddKitModal orgId={currentOrg.id} onClose={() => { setShowAddKit(false); fetchAll() }} addToast={addToast} />}
-    </div>
+    </>
   )
 }
 

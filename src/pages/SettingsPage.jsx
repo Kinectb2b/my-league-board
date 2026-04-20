@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
-import Sidebar from '../components/Sidebar'
 
 export default function SettingsPage() {
   const { currentOrg, refreshOrgs } = useOrg()
@@ -78,9 +77,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
+    <>
         <div className="page-header">
           <div>
             <h1>Settings</h1>
@@ -169,8 +166,7 @@ export default function SettingsPage() {
             onClose={() => { setShowAdd(false); setEditingTemplate(null) }}
           />
         )}
-      </main>
-    </div>
+    </>
   )
 }
 

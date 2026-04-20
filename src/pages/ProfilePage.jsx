@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/Toast'
-import Sidebar from '../components/Sidebar'
 
 export default function ProfilePage() {
   const { user } = useAuth()
@@ -72,18 +71,11 @@ export default function ProfilePage() {
   }
 
   if (loading) return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
-        <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div>
-      </main>
-    </div>
+    <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div>
   )
 
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
+    <>
         <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Profile</h1>
         <p className="text-muted" style={{ marginBottom: '1.5rem' }}>Manage your personal information</p>
 
@@ -155,7 +147,6 @@ export default function ProfilePage() {
             </form>
           </div>
         </div>
-      </main>
-    </div>
+    </>
   )
 }

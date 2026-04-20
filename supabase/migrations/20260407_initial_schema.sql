@@ -1,0 +1,21 @@
+-- Initial schema snapshot — backfilled 2026-04-20
+-- Represents the schema as it existed in production before
+-- migrations were formally tracked.
+--
+-- TODO: Robert to paste in the output of `pg_dump --schema-only`
+-- from the Supabase project, OR use the Supabase Studio "Schema
+-- Visualizer" export.
+--
+-- Tables to include (27):
+--   organizations, profiles, organization_members, invitations,
+--   seasons, sport_types, divisions, teams,
+--   equipment_categories, equipment_items, equipment_assignments,
+--   storage_locations, location_stock, condition_log,
+--   kit_templates, kit_template_items,
+--   team_bags, team_bag_items, bag_item_replacements,
+--   activity_log, board_positions,
+--   budget_categories, transactions, sponsors,
+--   incident_reports, background_checks, first_aid_kits
+--
+-- Enums: member_role
+-- Functions: is_org_member(uuid), has_org_role(uuid, member_role)

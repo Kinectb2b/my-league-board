@@ -4,7 +4,6 @@ import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/Toast'
 import { friendlyError } from '../lib/errors'
-import Sidebar from '../components/Sidebar'
 
 export default function TreasurerPage() {
   const { currentOrg, userRole } = useOrg()
@@ -52,18 +51,11 @@ export default function TreasurerPage() {
   const fmt = (n) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
   if (loading) return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
-        <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div>
-      </main>
-    </div>
+    <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div>
   )
 
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
+    <>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Treasurer</h1>
@@ -178,8 +170,7 @@ export default function TreasurerPage() {
 
         {/* Add Sponsor Modal */}
         {showAddSponsor && <AddSponsorModal orgId={currentOrg.id} seasons={seasons} activeSeason={activeSeason} onClose={() => { setShowAddSponsor(false); fetchAll() }} addToast={addToast} />}
-      </main>
-    </div>
+    </>
   )
 }
 
