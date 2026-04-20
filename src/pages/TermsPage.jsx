@@ -67,7 +67,7 @@ export default function TermsPage() {
         <p style={paragraph}>These terms may be updated from time to time. Continued use of the platform after changes are posted constitutes your acceptance of the updated terms.</p>
 
         <h2 style={sectionTitle}>Contact</h2>
-        <p style={paragraph}>If you have questions about these terms, you can reach us at <a href="mailto:robert@kinectb2b.com" style={{ color: '#1a472a' }}>robert@kinectb2b.com</a>.</p>
+        <p style={paragraph}>If you have questions about these terms, you can reach us at <a href="mailto:support@myleagueboard.com" style={{ color: '#1a472a' }}>support@myleagueboard.com</a>.</p>
 
         <p style={{ ...paragraph, marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb', color: '#6b7280', fontSize: '0.85rem' }}>Effective date: April 20, 2026</p>
       </div>

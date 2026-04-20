@@ -74,7 +74,7 @@ export default function PrivacyPage() {
         <p style={paragraph}>This privacy policy may be updated from time to time. If changes are made, you will be notified upon your next login to the platform.</p>
 
         <h2 style={sectionTitle}>Contact</h2>
-        <p style={paragraph}>If you have questions about this privacy policy, you can reach us at <a href="mailto:robert@kinectb2b.com" style={{ color: '#1a472a' }}>robert@kinectb2b.com</a>.</p>
+        <p style={paragraph}>If you have questions about this privacy policy, you can reach us at <a href="mailto:support@myleagueboard.com" style={{ color: '#1a472a' }}>support@myleagueboard.com</a>.</p>
 
         <p style={{ ...paragraph, marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #e5e7eb', color: '#6b7280', fontSize: '0.85rem' }}>Effective date: April 20, 2026</p>
       </div>
