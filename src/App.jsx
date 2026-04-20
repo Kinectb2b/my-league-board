@@ -15,6 +15,7 @@ import AcceptInvitePage from './pages/AcceptInvitePage'
 import LandingPage from './pages/LandingPage'
 import TreasurerPage from './pages/TreasurerPage'
 import SafetyPage from './pages/SafetyPage'
+import AppLayout from './components/AppLayout'
 
 function ProtectedRoute({ children }) {
   const { user, loading: authLoading } = useAuth()
@@ -23,7 +24,7 @@ function ProtectedRoute({ children }) {
   if (authLoading || orgLoading) return <div className="loading-page">Loading...</div>
   if (!user) return <Navigate to="/auth" />
   if (!currentOrg) return <Navigate to="/setup" />
-  return children
+  return <AppLayout>{children}</AppLayout>
 }
 
 function AppRoutes() {
