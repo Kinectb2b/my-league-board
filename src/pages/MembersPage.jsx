@@ -67,6 +67,7 @@ export default function MembersPage() {
   const roleLabels = {
     admin: 'President / Admin',
     equipment_manager: 'Equipment Manager',
+    safety_officer: 'Safety Officer',
     coach: 'Coach',
     board_member: 'Board Member',
     volunteer: 'Volunteer'
@@ -148,6 +149,7 @@ export default function MembersPage() {
                         <select value={m.role} onChange={e => changeRole(m.id, e.target.value)} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', fontFamily: 'inherit', background: 'white' }}>
                           <option value="admin">President / Admin</option>
                           <option value="equipment_manager">Equipment Manager</option>
+                          <option value="safety_officer">Safety Officer</option>
                           <option value="coach">Coach</option>
                           <option value="board_member">Board Member</option>
                           <option value="volunteer">Volunteer</option>
@@ -325,6 +327,7 @@ function AddMemberModal({ orgId, onClose, onAdded }) {
             <select value={role} onChange={e => setRole(e.target.value)}>
               <option value="admin">President / Admin — full control of everything</option>
               <option value="equipment_manager">Equipment Manager — manages all gear and locations</option>
+              <option value="safety_officer">Safety Officer — manages incidents, background checks, first aid</option>
               <option value="coach">Coach — views their team's gear status</option>
               <option value="board_member">Board Member — read-only oversight of all areas</option>
               <option value="volunteer">Volunteer — limited view for helpers</option>

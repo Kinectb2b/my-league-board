@@ -17,7 +17,7 @@ export default function SafetyPage() {
   const [showAddIncident, setShowAddIncident] = useState(false)
   const [showAddCheck, setShowAddCheck] = useState(false)
   const [showAddKit, setShowAddKit] = useState(false)
-  const canEdit = ['admin'].includes(userRole)
+  const canEdit = ['admin', 'safety_officer'].includes(userRole)
 
   useEffect(() => { document.title = 'Safety | My League Board' }, [])
 

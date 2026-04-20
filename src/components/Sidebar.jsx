@@ -22,7 +22,7 @@ export default function Sidebar() {
       teams: ['admin','equipment_manager','coach','board_member','volunteer'],
       locations: ['admin','equipment_manager','board_member'],
       treasurer: ['admin'],
-      safety: ['admin'],
+      safety: ['admin', 'safety_officer'],
       members: ['admin'],
       settings: ['admin','equipment_manager']
     }
