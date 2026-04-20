@@ -3,7 +3,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
 import { Link } from 'react-router-dom'
-import Sidebar from '../components/Sidebar'
 
 export default function Dashboard() {
   const { profile } = useAuth()
@@ -71,9 +70,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
+    <>
         <div className="page-header">
           <div>
             <h1>Dashboard</h1>
@@ -209,8 +206,7 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-      </main>
-    </div>
+    </>
   )
 
   function timeAgo(date) {

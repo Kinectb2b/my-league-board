@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
 import { friendlyError } from '../lib/errors'
-import Sidebar from '../components/Sidebar'
 import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
 
@@ -208,9 +207,7 @@ export default function LocationsPage() {
   const totalUnallocated = totalInventory - totalStocked
 
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
+    <>
         <div className="page-header">
           <div>
             <h1>Storage locations</h1>
@@ -350,9 +347,8 @@ export default function LocationsPage() {
         {showTransfer && (
           <TransferModal locations={locations} stock={stock} equipment={equipment} supplyRoom={supplyRoom} activeLocation={activeLocation} onTransfer={transferItem} onClose={() => { setShowTransfer(false); fetchAll() }} />
         )}
-      </main>
       <style>{styles}</style>
-    </div>
+    </>
   )
 }
 

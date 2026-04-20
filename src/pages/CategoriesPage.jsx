@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
-import Sidebar from '../components/Sidebar'
+
 
 export default function CategoriesPage() {
   const { currentOrg } = useOrg()
@@ -40,9 +40,7 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
+    <>
         <div className="page-header">
           <div>
             <h1>Equipment categories</h1>
@@ -75,8 +73,7 @@ export default function CategoriesPage() {
         {showAdd && (
           <AddCategoryModal orgId={currentOrg.id} onAdd={addCategory} onClose={() => setShowAdd(false)} />
         )}
-      </main>
-    </div>
+    </>
   )
 }
 

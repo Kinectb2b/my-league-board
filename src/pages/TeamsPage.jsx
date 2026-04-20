@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import Sidebar from '../components/Sidebar'
 import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
 
@@ -160,9 +159,7 @@ export default function TeamsPage() {
   }
 
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
+    <>
         <div className="page-header">
           <div>
             <h1>Teams & divisions</h1>
@@ -294,9 +291,8 @@ export default function TeamsPage() {
             onClose={() => { setBulkAssignDivision(null); fetchAll() }}
           />
         )}
-      </main>
       <style>{teamStyles}</style>
-    </div>
+    </>
   )
 }
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import Sidebar from '../components/Sidebar'
+
 
 export default function AssignmentsPage() {
   const { currentOrg } = useOrg()
@@ -58,9 +58,7 @@ export default function AssignmentsPage() {
     : assignments
 
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
+    <>
         <div className="page-header">
           <div>
             <h1>Equipment assignments</h1>
@@ -127,8 +125,7 @@ export default function AssignmentsPage() {
         {showAssign && (
           <AssignModal items={items} teams={teams} onAssign={assignItem} onClose={() => setShowAssign(false)} />
         )}
-      </main>
-    </div>
+    </>
   )
 }
 

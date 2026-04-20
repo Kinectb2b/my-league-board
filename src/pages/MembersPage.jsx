@@ -5,7 +5,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/Toast'
 import { friendlyError } from '../lib/errors'
 import { logActivity } from '../lib/activity'
-import Sidebar from '../components/Sidebar'
 
 export default function MembersPage() {
   const { currentOrg, userRole } = useOrg()
@@ -74,21 +73,14 @@ export default function MembersPage() {
   }
 
   if (loading) return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
-        <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div>
-      </main>
-    </div>
+    <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div>
   )
 
   const filledPositions = positions.filter(p => p.assigned_to)
   const vacantPositions = positions.filter(p => !p.assigned_to)
 
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
+    <>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Board Directory</h1>
@@ -217,8 +209,7 @@ export default function MembersPage() {
             onAdded={fetchAll}
           />
         )}
-      </main>
-    </div>
+    </>
   )
 }
 

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
-import Sidebar from '../components/Sidebar'
 import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
 
@@ -158,9 +157,7 @@ export default function EquipmentPage() {
   const sc = { 'available':'#16a34a','assigned':'#3b82f6','in_repair':'#f97316','lost':'#dc2626','retired':'#6b7280' }
 
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
+    <>
         <div className="page-header">
           <div>
             <h1>Equipment inventory</h1>
@@ -224,13 +221,12 @@ export default function EquipmentPage() {
           />
         )}
         {selectedItem && <ItemDetailModal item={selectedItem} locationStock={stockData} locations={locations} canEdit={canEdit} onClose={() => { setSelectedItem(null); fetchAll() }} />}
-      </main>
       <style>{`
         .btn-icon-sm { background:none; border:none; color:var(--gray-400); cursor:pointer; font-size:0.85rem; padding:0.2rem 0.4rem; border-radius:4px; transition:color .15s,background .15s; line-height:1; }
         .btn-icon-sm:hover { color:var(--green-700); background:var(--green-100); }
         .btn-icon-danger:hover { color:var(--red-500)!important; background:var(--red-100)!important; }
       `}</style>
-    </div>
+    </>
   )
 }
 

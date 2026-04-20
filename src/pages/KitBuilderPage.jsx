@@ -2,15 +2,13 @@ import { useState, useEffect } from 'react'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
-import Sidebar from '../components/Sidebar'
+
 
 export default function KitBuilderPage() {
   const [activeTab, setActiveTab] = useState('bags')
 
   return (
-    <div className="app-layout">
-      <Sidebar />
-      <main className="main-content">
+    <>
         <div className="page-header">
           <div>
             <h1>Kit builder</h1>
@@ -23,9 +21,8 @@ export default function KitBuilderPage() {
         </div>
         {activeTab === 'templates' && <TemplatesTab />}
         {activeTab === 'bags' && <BagsTab />}
-      </main>
-      <style>{kitStyles}</style>
-    </div>
+        <style>{kitStyles}</style>
+    </>
   )
 }
 
