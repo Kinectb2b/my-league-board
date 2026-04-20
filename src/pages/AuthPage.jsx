@@ -12,6 +12,7 @@ export default function AuthPage() {
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [agreedToTerms, setAgreedToTerms] = useState(false)
   const { signIn, signUp } = useAuth()
   const navigate = useNavigate()
 
@@ -87,12 +88,18 @@ export default function AuthPage() {
               <label htmlFor="password">Password</label>
               <input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="At least 6 characters" minLength={6} required />
             </div>
+            {isSignUp && (
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.8rem', color: 'rgba(255,255,255,0.7)', cursor: 'pointer', marginTop: '0.25rem' }}>
+                <input type="checkbox" checked={agreedToTerms} onChange={e => setAgreedToTerms(e.target.checked)} style={{ marginTop: '0.15rem' }} />
+                <span>I agree to the <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#e8b931', textDecoration: 'underline' }}>Terms of Service</a> and <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: '#e8b931', textDecoration: 'underline' }}>Privacy Policy</a></span>
+              </label>
+            )}
             {!isSignUp && (
               <button type="button" className="forgot-link" onClick={() => { setShowReset(true); setError(''); setMessage('') }}>Forgot password?</button>
             )}
             {error && <div className="form-error">{error}</div>}
             {message && <div className="form-success">{message}</div>}
-            <button type="submit" className="btn-primary" disabled={submitting}>
+            <button type="submit" className="btn-primary" disabled={submitting || (isSignUp && !agreedToTerms)}>
               {submitting ? 'Please wait...' : (isSignUp ? 'Create account' : 'Sign in')}
             </button>
           </form>
@@ -106,6 +113,11 @@ export default function AuthPage() {
         </>)}
         <div style={{ textAlign: 'center', marginTop: '1rem' }}>
           <a href="/" style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', textDecoration: 'none' }}>← Back to home</a>
+        </div>
+        <div style={{ textAlign: 'center', marginTop: '0.75rem', fontSize: '0.75rem' }}>
+          <a href="/privacy" style={{ color: 'rgba(255,255,255,0.35)', textDecoration: 'none' }}>Privacy Policy</a>
+          <span style={{ color: 'rgba(255,255,255,0.2)', margin: '0 0.4rem' }}>·</span>
+          <a href="/terms" style={{ color: 'rgba(255,255,255,0.35)', textDecoration: 'none' }}>Terms of Service</a>
         </div>
       </div>
     </div>

@@ -15,6 +15,8 @@ import AcceptInvitePage from './pages/AcceptInvitePage'
 import LandingPage from './pages/LandingPage'
 import TreasurerPage from './pages/TreasurerPage'
 import SafetyPage from './pages/SafetyPage'
+import PrivacyPage from './pages/PrivacyPage'
+import TermsPage from './pages/TermsPage'
 import AppLayout from './components/AppLayout'
 
 function ProtectedRoute({ children }) {
@@ -46,6 +48,8 @@ function AppRoutes() {
       <Route path="/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
       <Route path="/accept-invite" element={<AcceptInvitePage />} />
       <Route path="/" element={user ? <Navigate to="/dashboard" /> : <LandingPage />} />
       <Route path="*" element={user ? <Navigate to="/dashboard" /> : <Navigate to="/" />} />

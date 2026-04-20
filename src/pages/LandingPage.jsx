@@ -36,6 +36,11 @@ export default function LandingPage() {
       </main>
 
       <footer style={{ textAlign: 'center', padding: '3rem 2rem', color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem' }}>
+        <div style={{ marginBottom: '0.5rem' }}>
+          <a href="/privacy" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Privacy Policy</a>
+          <span style={{ margin: '0 0.5rem' }}>·</span>
+          <a href="/terms" style={{ color: 'rgba(255,255,255,0.5)', textDecoration: 'none' }}>Terms of Service</a>
+        </div>
         © {new Date().getFullYear()} My League Board
       </footer>
 
