@@ -6,9 +6,9 @@ import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
 
 export default function LocationsPage() {
-  const { currentOrg, userRole } = useOrg()
+  const { currentOrg, hasAnyRole } = useOrg()
   const { addToast } = useToast()
-  const canEdit = ['admin','equipment_manager'].includes(userRole)
+  const canEdit = hasAnyRole(['admin', 'equipment_manager'])
   const [locations, setLocations] = useState([])
   const [equipment, setEquipment] = useState([])
   const [stock, setStock] = useState([])

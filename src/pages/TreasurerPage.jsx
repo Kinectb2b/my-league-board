@@ -6,7 +6,7 @@ import { useToast } from '../components/Toast'
 import { friendlyError } from '../lib/errors'
 
 export default function TreasurerPage() {
-  const { currentOrg, userRole } = useOrg()
+  const { currentOrg, hasAnyRole } = useOrg()
   const { user } = useAuth()
   const { addToast } = useToast()
   const [tab, setTab] = useState('overview')
@@ -18,7 +18,7 @@ export default function TreasurerPage() {
   const [loading, setLoading] = useState(true)
   const [showAddTransaction, setShowAddTransaction] = useState(false)
   const [showAddSponsor, setShowAddSponsor] = useState(false)
-  const canEdit = ['admin'].includes(userRole)
+  const canEdit = hasAnyRole(['admin'])
 
   useEffect(() => { document.title = 'Treasurer | My League Board' }, [])
 

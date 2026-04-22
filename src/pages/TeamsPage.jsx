@@ -6,10 +6,10 @@ import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
 
 export default function TeamsPage() {
-  const { currentOrg, userRole } = useOrg()
+  const { currentOrg, hasAnyRole } = useOrg()
   const { user } = useAuth()
   const { addToast } = useToast()
-  const canEdit = ['admin','equipment_manager'].includes(userRole)
+  const canEdit = hasAnyRole(['admin', 'equipment_manager'])
   const [teams, setTeams] = useState([])
   const [divisions, setDivisions] = useState([])
   const [seasons, setSeasons] = useState([])

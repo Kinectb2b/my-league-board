@@ -6,7 +6,7 @@ import { useToast } from '../components/Toast'
 import { friendlyError } from '../lib/errors'
 
 export default function SafetyPage() {
-  const { currentOrg, userRole } = useOrg()
+  const { currentOrg, hasAnyRole } = useOrg()
   const { user } = useAuth()
   const { addToast } = useToast()
   const [tab, setTab] = useState('incidents')
@@ -17,7 +17,7 @@ export default function SafetyPage() {
   const [showAddIncident, setShowAddIncident] = useState(false)
   const [showAddCheck, setShowAddCheck] = useState(false)
   const [showAddKit, setShowAddKit] = useState(false)
-  const canEdit = ['admin', 'safety_officer'].includes(userRole)
+  const canEdit = hasAnyRole(['admin', 'safety_officer'])
 
   useEffect(() => { document.title = 'Safety | My League Board' }, [])
 

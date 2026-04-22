@@ -19,9 +19,9 @@ const EQUIPMENT_TYPES = [
 ]
 
 export default function EquipmentPage() {
-  const { currentOrg, userRole } = useOrg()
+  const { currentOrg, hasAnyRole } = useOrg()
   const { addToast } = useToast()
-  const canEdit = ['admin','equipment_manager'].includes(userRole)
+  const canEdit = hasAnyRole(['admin', 'equipment_manager'])
   const [items, setItems] = useState([])
   const [categories, setCategories] = useState([])
   const [locations, setLocations] = useState([])

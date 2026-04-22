@@ -7,7 +7,7 @@ import { friendlyError } from '../lib/errors'
 import { logActivity } from '../lib/activity'
 
 export default function MembersPage() {
-  const { currentOrg, userRole } = useOrg()
+  const { currentOrg, hasAnyRole } = useOrg()
   const { user } = useAuth()
   const { addToast } = useToast()
   const [positions, setPositions] = useState([])
@@ -15,7 +15,7 @@ export default function MembersPage() {
   const [loading, setLoading] = useState(true)
   const [showAddMember, setShowAddMember] = useState(false)
   const [assigningPosition, setAssigningPosition] = useState(null)
-  const canEdit = userRole === 'admin'
+  const canEdit = hasAnyRole(['admin'])
 
   useEffect(() => { document.title = 'Board Directory | My League Board' }, [])
 
