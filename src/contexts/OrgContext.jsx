@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
+import { useUserRoles } from '../hooks/useUserRoles'
+import { hasRole as checkRole, hasAnyRole as checkAnyRole, hasAllRoles as checkAllRoles } from '../lib/permissions'
 
 const OrgContext = createContext({})
 
@@ -51,6 +53,11 @@ export function OrgProvider({ children }) {
     setLoading(false)
   }
 
+  const { roles: userRoles, loading: rolesLoading } = useUserRoles(
+    currentOrg?.id,
+    user?.id
+  )
+
   function switchOrg(orgId) {
     const org = orgs.find(o => o.id === orgId)
     if (org) {
@@ -77,6 +84,11 @@ export function OrgProvider({ children }) {
   return (
     <OrgContext.Provider value={{
       orgs, currentOrg, membership, userRole, loading,
+      roles: userRoles,
+      rolesLoading,
+      hasRole: (targetRole) => checkRole(userRoles, targetRole),
+      hasAnyRole: (targetRoles) => checkAnyRole(userRoles, targetRoles),
+      hasAllRoles: (targetRoles) => checkAllRoles(userRoles, targetRoles),
       switchOrg, createOrg, refreshOrgs: fetchOrgs
     }}>
       {children}
