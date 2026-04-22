@@ -5,7 +5,7 @@ import { useOrg } from '../contexts/OrgContext'
 
 export default function Sidebar() {
   const { signOut, profile } = useAuth()
-  const { currentOrg, userRole } = useOrg()
+  const { currentOrg, hasAnyRole, rolesLoading } = useOrg()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark')
@@ -16,6 +16,7 @@ export default function Sidebar() {
   }, [darkMode])
 
   const canSee = (page) => {
+    if (rolesLoading) return false
     const access = {
       dashboard: ['admin','equipment_manager','coach','board_member','volunteer'],
       equipment: ['admin','equipment_manager','board_member'],
@@ -26,7 +27,7 @@ export default function Sidebar() {
       members: ['admin'],
       settings: ['admin','equipment_manager']
     }
-    return !userRole || access[page]?.includes(userRole)
+    return hasAnyRole(access[page] || [])
   }
 
   return (
