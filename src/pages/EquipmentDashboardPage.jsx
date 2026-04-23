@@ -71,16 +71,14 @@ export default function EquipmentDashboardPage() {
       .select('*, equipment_items(name, case_size), storage_locations:storage_location_id(name)')
       .eq('organization_id', orgId)
       .not('target_quantity', 'is', null)
-      .lt('quantity', supabase.rpc ? 0 : 999999) // will filter client-side
-      .order('quantity', { ascending: true })
-      .limit(20)
       .then(({ data, error }) => {
         if (error) {
           // target_quantity column likely doesn't exist yet
           setBelowTarget([])
         } else {
-          // Client-side filter: quantity < target_quantity
-          const alerts = (data || []).filter(r => r.target_quantity && r.quantity < r.target_quantity)
+          // Client-side filter: Supabase JS can't compare column-to-column
+          const alerts = (data || []).filter(r => r.quantity < r.target_quantity)
+          alerts.sort((a, b) => (a.quantity / a.target_quantity) - (b.quantity / b.target_quantity))
           setBelowTarget(alerts)
         }
       })
