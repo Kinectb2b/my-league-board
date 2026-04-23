@@ -41,7 +41,7 @@ export default function NewTicketPage() {
       const orgId = currentOrg.id
       Promise.all([
         supabase.from('teams').select('id, name').eq('organization_id', orgId).order('name'),
-        supabase.from('divisions').select('id, name').eq('organization_id', orgId).order('name'),
+        supabase.from('divisions').select('id, name, sport_types(name)').eq('organization_id', orgId).order('name'),
         supabase.from('storage_locations').select('id, name').eq('organization_id', orgId).order('name'),
         supabase.from('equipment_items').select('id, name, brand').eq('organization_id', orgId).order('name')
       ]).then(([t, d, l, e]) => {
@@ -199,7 +199,7 @@ export default function NewTicketPage() {
                 <label>Division</label>
                 <select value={divisionId} onChange={e => setDivisionId(e.target.value)}>
                   <option value="">None</option>
-                  {divisions.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  {[...divisions].sort((a, b) => `${a.sport_types?.name} / ${a.name}`.localeCompare(`${b.sport_types?.name} / ${b.name}`)).map(d => <option key={d.id} value={d.id}>{d.sport_types?.name} / {d.name}</option>)}
                 </select>
               </div>
             </div>
