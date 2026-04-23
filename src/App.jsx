@@ -17,6 +17,9 @@ import TreasurerPage from './pages/TreasurerPage'
 import SafetyPage from './pages/SafetyPage'
 import PrivacyPage from './pages/PrivacyPage'
 import TermsPage from './pages/TermsPage'
+import TicketsPage from './pages/TicketsPage'
+import NewTicketPage from './pages/NewTicketPage'
+import TicketDetailPage from './pages/TicketDetailPage'
 import BagTemplatesPage from './pages/BagTemplatesPage'
 import TeamBagsPage from './pages/TeamBagsPage'
 import TeamBagDetailPage from './pages/TeamBagDetailPage'
@@ -50,6 +53,9 @@ function AppRoutes() {
       <Route path="/safety" element={<ProtectedRoute><SafetyPage /></ProtectedRoute>} />
       <Route path="/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+      <Route path="/tickets" element={<ProtectedRoute><TicketsPage /></ProtectedRoute>} />
+      <Route path="/tickets/new" element={<ProtectedRoute><NewTicketPage /></ProtectedRoute>} />
+      <Route path="/tickets/:id" element={<ProtectedRoute><TicketDetailPage /></ProtectedRoute>} />
       <Route path="/bag-templates" element={<ProtectedRoute><BagTemplatesPage /></ProtectedRoute>} />
       <Route path="/team-bags" element={<ProtectedRoute><TeamBagsPage /></ProtectedRoute>} />
       <Route path="/team-bags/:id" element={<ProtectedRoute><TeamBagDetailPage /></ProtectedRoute>} />

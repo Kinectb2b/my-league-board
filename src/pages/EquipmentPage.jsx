@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -81,6 +82,7 @@ function getCategoryPath(catId, catMap) {
 // --- Main component ---
 
 export default function EquipmentPage() {
+  const navigate = useNavigate()
   const { currentOrg, hasAnyRole } = useOrg()
   const { user } = useAuth()
   const { addToast } = useToast()
@@ -519,6 +521,7 @@ export default function EquipmentPage() {
                                   <button onClick={() => { setRemoveItem(item); setOpenActionMenu(null) }}>− Remove</button>
                                   <button onClick={() => { setAuditItem(item); setOpenActionMenu(null) }}>☑ Audit</button>
                                   <button onClick={() => { setHistoryItem(item); setOpenActionMenu(null) }}>↕ History</button>
+                                  <button onClick={() => { setOpenActionMenu(null); navigate(`/tickets/new?equipment_item_id=${item.id}`) }}>🎫 Report issue</button>
                                   <div className="eq-action-divider" />
                                   <button className="eq-action-danger" onClick={() => { deleteItem(item.id); setOpenActionMenu(null) }}>✕ Delete</button>
                                 </div>

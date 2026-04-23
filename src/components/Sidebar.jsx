@@ -2,18 +2,30 @@ import { useState, useEffect } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useOrg } from '../contexts/OrgContext'
+import { supabase } from '../lib/supabase'
 
 export default function Sidebar() {
-  const { signOut, profile } = useAuth()
+  const { signOut, profile, user } = useAuth()
   const { currentOrg, hasAnyRole, rolesLoading } = useOrg()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark')
+  const [ticketBadge, setTicketBadge] = useState(0)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
     localStorage.setItem('theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
+
+  useEffect(() => {
+    if (!user?.id || !currentOrg?.id) return
+    supabase.from('tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('organization_id', currentOrg.id)
+      .eq('assigned_to', user.id)
+      .in('status', ['open', 'in_progress'])
+      .then(({ count }) => setTicketBadge(count || 0))
+  }, [user?.id, currentOrg?.id])
 
   const canSee = (page) => {
     if (rolesLoading) return false
@@ -58,6 +70,9 @@ export default function Sidebar() {
         <nav className="sidebar-nav">
           {canSee('dashboard') && <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">📊</span> Dashboard
+          </NavLink>}
+          {canSee('dashboard') && <NavLink to="/tickets" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <span className="nav-icon">🎫</span> Tickets{ticketBadge > 0 && <span style={{ marginLeft: 'auto', background: '#ef4444', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '10px', lineHeight: 1.2 }}>{ticketBadge}</span>}
           </NavLink>}
           {canSee('equipment') && <NavLink to="/equipment" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">📦</span> Equipment
