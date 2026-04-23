@@ -10,6 +10,7 @@ import EquipmentDashboardPage from './pages/EquipmentDashboardPage'
 import TeamsPage from './pages/TeamsPage'
 import LocationsPage from './pages/LocationsPage'
 import MembersPage from './pages/MembersPage'
+import BoardPage from './pages/BoardPage'
 import SettingsPage from './pages/SettingsPage'
 import ProfilePage from './pages/ProfilePage'
 import AcceptInvitePage from './pages/AcceptInvitePage'
@@ -54,6 +55,7 @@ function AppRoutes() {
       <Route path="/locations" element={<ProtectedRoute><LocationsPage /></ProtectedRoute>} />
       <Route path="/treasurer" element={<ProtectedRoute><TreasurerPage /></ProtectedRoute>} />
       <Route path="/safety" element={<ProtectedRoute><SafetyPage /></ProtectedRoute>} />
+      <Route path="/board" element={<ProtectedRoute><BoardPage /></ProtectedRoute>} />
       <Route path="/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
       <Route path="/tickets" element={<ProtectedRoute><TicketsPage /></ProtectedRoute>} />

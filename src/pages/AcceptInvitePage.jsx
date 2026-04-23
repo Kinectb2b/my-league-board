@@ -24,7 +24,7 @@ export default function AcceptInvitePage() {
     setLoading(true)
     const { data, error } = await supabase
       .from('invitations')
-      .select('*, organizations(name)')
+      .select('*, organizations(name), board_positions:board_position_id(id, title)')
       .eq('token', token)
       .is('accepted_at', null)
       .single()
@@ -37,6 +37,8 @@ export default function AcceptInvitePage() {
   async function acceptInvite() {
     if (!user) { navigate('/auth?redirect=/accept-invite?token=' + token); return }
     setAccepting(true)
+
+    // 1. Add to organization_members
     const { error: memberError } = await supabase.from('organization_members').insert({
       organization_id: invite.organization_id,
       profile_id: user.id,
@@ -48,13 +50,56 @@ export default function AcceptInvitePage() {
       setAccepting(false)
       return
     }
+
+    // 2. Assign board position if one was specified
+    if (invite.board_position_id) {
+      await supabase.from('board_positions').update({
+        assigned_to: user.id,
+        appointed_date: new Date().toISOString().split('T')[0]
+      }).eq('id', invite.board_position_id)
+    }
+
+    // 3. Grant user_roles from intended_roles
+    const rolesToGrant = invite.intended_roles && invite.intended_roles.length > 0
+      ? invite.intended_roles
+      : [invite.role]
+    for (const role of rolesToGrant) {
+      await supabase.from('user_roles').upsert({
+        user_id: user.id,
+        organization_id: invite.organization_id,
+        role,
+        scope_type: 'league',
+      }, { onConflict: 'user_id,organization_id,role,scope_type,scope_id' })
+    }
+
+    // 4. Update profile with name/phone from invitation if profile is sparse
+    if (invite.full_name || invite.phone) {
+      const { data: profile } = await supabase.from('profiles').select('full_name, phone').eq('id', user.id).single()
+      const updates = {}
+      if (!profile?.full_name && invite.full_name) updates.full_name = invite.full_name
+      if (!profile?.phone && invite.phone) updates.phone = invite.phone
+      if (Object.keys(updates).length > 0) {
+        await supabase.from('profiles').update(updates).eq('id', user.id)
+      }
+    }
+
+    // 5. Mark invitation accepted
     await supabase.from('invitations').update({ accepted_at: new Date().toISOString() }).eq('id', invite.id)
+
     await refreshOrgs()
     setAccepting(false)
     navigate('/dashboard')
   }
 
-  const roleLabels = { admin: 'Admin', equipment_manager: 'Equipment Manager', coach: 'Coach', board_member: 'Board Member', volunteer: 'Volunteer' }
+  // Build a human-readable description of what they're being invited to
+  const positionTitle = invite?.board_positions?.title
+  const orgName = invite?.organizations?.name
+  let inviteDescription = ''
+  if (positionTitle && orgName) {
+    inviteDescription = `You've been invited to join ${orgName} as ${positionTitle}.`
+  } else if (orgName) {
+    inviteDescription = `You've been invited to join ${orgName}.`
+  }
 
   return (
     <div className="auth-page">
@@ -81,8 +126,13 @@ export default function AcceptInvitePage() {
         ) : invite ? (
           <div>
             <p style={{ textAlign: 'center', marginBottom: '1.5rem', color: 'var(--gray-600)' }}>
-              You've been invited to join <strong>{invite.organizations?.name}</strong> as <strong>{roleLabels[invite.role] || invite.role}</strong>.
+              <strong>{inviteDescription}</strong>
             </p>
+            {invite.welcome_message && (
+              <p style={{ textAlign: 'center', marginBottom: '1rem', color: 'var(--gray-500)', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                "{invite.welcome_message}"
+              </p>
+            )}
             {!user ? (
               <div>
                 <p className="text-muted" style={{ textAlign: 'center', marginBottom: '1rem' }}>Sign in or create an account to accept this invitation.</p>

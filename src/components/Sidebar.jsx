@@ -101,8 +101,11 @@ export default function Sidebar() {
           {canSee('safety') && <NavLink to="/safety" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">🛡️</span> Safety
           </NavLink>}
-          {canSee('members') && <NavLink to="/members" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+          <NavLink to="/board" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">👤</span> Board
+          </NavLink>
+          {canSee('members') && <NavLink to="/members" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <span className="nav-icon">👥</span> Members
           </NavLink>}
           {canSee('settings') && <NavLink to="/settings" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">⚙️</span> Settings
