@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
@@ -18,6 +18,67 @@ const EQUIPMENT_TYPES = [
   { id: 'apparel', label: 'Apparel' },
 ]
 
+// --- Tree helpers ---
+
+function buildCategoryTree(categories, items) {
+  const catMap = {}
+  categories.forEach(c => { catMap[c.id] = { ...c, children: [], directCount: 0, totalCount: 0 } })
+
+  // Count items per category
+  items.forEach(item => {
+    if (item.category_id && catMap[item.category_id]) {
+      catMap[item.category_id].directCount++
+    }
+  })
+
+  // Build parent-child relationships
+  const roots = []
+  Object.values(catMap).forEach(node => {
+    if (node.parent_category_id && catMap[node.parent_category_id]) {
+      catMap[node.parent_category_id].children.push(node)
+    } else {
+      roots.push(node)
+    }
+  })
+
+  // Sort children by sort_order then name
+  function sortChildren(nodes) {
+    nodes.sort((a, b) => (a.sort_order ?? 999) - (b.sort_order ?? 999) || a.name.localeCompare(b.name))
+    nodes.forEach(n => sortChildren(n.children))
+  }
+  sortChildren(roots)
+
+  // Compute totalCount (self + all descendants)
+  function computeTotals(node) {
+    node.totalCount = node.directCount
+    node.children.forEach(child => {
+      computeTotals(child)
+      node.totalCount += child.totalCount
+    })
+  }
+  roots.forEach(computeTotals)
+
+  return { roots, catMap }
+}
+
+function getDescendantIds(node) {
+  const ids = [node.id]
+  node.children.forEach(child => ids.push(...getDescendantIds(child)))
+  return ids
+}
+
+function getCategoryPath(catId, catMap) {
+  const parts = []
+  let current = catMap[catId]
+  while (current) {
+    parts.unshift(current.name)
+    current = current.parent_category_id ? catMap[current.parent_category_id] : null
+  }
+  return parts
+}
+
+// --- Main component ---
+
 export default function EquipmentPage() {
   const { currentOrg, hasAnyRole } = useOrg()
   const { addToast } = useToast()
@@ -29,12 +90,16 @@ export default function EquipmentPage() {
   const [loading, setLoading] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
-  const [filterCategory, setFilterCategory] = useState('')
+  const [selectedCategoryId, setSelectedCategoryId] = useState(null) // null = ALL
+  const [filterBrand, setFilterBrand] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [filterCondition, setFilterCondition] = useState('')
   const [filterLocation, setFilterLocation] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedItem, setSelectedItem] = useState(null)
+  const [expandedNodes, setExpandedNodes] = useState({})
+  const [showMobileTree, setShowMobileTree] = useState(false)
+  const [showMobileFilters, setShowMobileFilters] = useState(false)
 
   useEffect(() => { document.title = 'Equipment | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
@@ -42,7 +107,7 @@ export default function EquipmentPage() {
     function handleKeyDown(e) {
       if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
         e.preventDefault()
-        document.querySelector('.search-input')?.focus()
+        document.querySelector('.eq-search-input')?.focus()
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -53,12 +118,130 @@ export default function EquipmentPage() {
     setLoading(true)
     const orgId = currentOrg.id
     const [i, c, l, s] = await Promise.all([
-      supabase.from('equipment_items').select('*, equipment_categories(name), storage_locations!storage_location_id(name)').eq('organization_id', orgId).order('created_at', { ascending: false }),
-      supabase.from('equipment_categories').select('*').eq('organization_id', orgId).order('name'),
+      supabase.from('equipment_items').select('*, equipment_categories(name, parent_category_id), storage_locations!storage_location_id(name)').eq('organization_id', orgId).order('created_at', { ascending: false }),
+      supabase.from('equipment_categories').select('*').eq('organization_id', orgId).order('sort_order'),
       supabase.from('storage_locations').select('*').eq('organization_id', orgId).order('name'),
       supabase.from('location_stock').select('id, equipment_item_id, storage_location_id, quantity').eq('organization_id', orgId)
     ])
-    setItems(i.data || []); setCategories(c.data || []); setLocations(l.data || []); setStockData(s.data || []); setLoading(false)
+    setItems(i.data || [])
+    setCategories(c.data || [])
+    setLocations(l.data || [])
+    setStockData(s.data || [])
+    setLoading(false)
+
+    // Auto-expand first two levels
+    if (c.data) {
+      const expanded = {}
+      c.data.forEach(cat => {
+        if (!cat.parent_category_id) expanded[cat.id] = true
+        // Also expand second level
+        c.data.forEach(child => {
+          if (child.parent_category_id === cat.id && !cat.parent_category_id) {
+            expanded[child.id] = true
+          }
+        })
+      })
+      setExpandedNodes(expanded)
+    }
+  }
+
+  // Build tree with memoization
+  const { roots: treeRoots, catMap } = useMemo(
+    () => buildCategoryTree(categories, items),
+    [categories, items]
+  )
+
+  // Get all category IDs in the selected subtree
+  const isUncategorized = selectedCategoryId === '__uncategorized__'
+  const selectedSubtreeIds = useMemo(() => {
+    if (!selectedCategoryId || isUncategorized) return null
+    const node = catMap[selectedCategoryId]
+    return node ? new Set(getDescendantIds(node)) : null
+  }, [selectedCategoryId, catMap, isUncategorized])
+
+  // All distinct brands
+  const allBrands = useMemo(() => {
+    const brands = new Set()
+    items.forEach(item => { if (item.brand) brands.add(item.brand) })
+    return [...brands].sort()
+  }, [items])
+
+  function getItemStockedQty(itemId) {
+    return stockData.filter(s => s.equipment_item_id === itemId).reduce((sum, s) => sum + s.quantity, 0)
+  }
+
+  // Filter items
+  const filtered = useMemo(() => {
+    return items.filter(item => {
+      if (isUncategorized && item.category_id) return false
+      if (selectedSubtreeIds && (!item.category_id || !selectedSubtreeIds.has(item.category_id))) return false
+      if (filterBrand && item.brand !== filterBrand) return false
+      if (filterStatus && item.status !== filterStatus) return false
+      if (filterCondition && item.item_condition !== filterCondition) return false
+      if (filterLocation) {
+        if (filterLocation === 'unassigned') {
+          if (item.storage_location_id) return false
+        } else if (item.storage_location_id !== filterLocation) return false
+      }
+      if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase())) return false
+      return true
+    })
+  }, [items, selectedSubtreeIds, filterBrand, filterStatus, filterCondition, filterLocation, searchTerm])
+
+  // Summary stats for selected category
+  const summary = useMemo(() => {
+    const brandCounts = {}
+    const locationCounts = {}
+    const conditionCounts = {}
+    let totalQty = 0
+
+    filtered.forEach(item => {
+      const qty = getItemStockedQty(item.id) || item.quantity
+      totalQty += qty
+      if (item.brand) brandCounts[item.brand] = (brandCounts[item.brand] || 0) + qty
+      if (item.item_condition) conditionCounts[item.item_condition] = (conditionCounts[item.item_condition] || 0) + qty
+    })
+
+    // Location breakdown from stock data for filtered items
+    const filteredItemIds = new Set(filtered.map(i => i.id))
+    stockData.forEach(s => {
+      if (filteredItemIds.has(s.equipment_item_id)) {
+        const loc = locations.find(l => l.id === s.storage_location_id)
+        const locName = loc?.name || 'Unknown'
+        locationCounts[locName] = (locationCounts[locName] || 0) + s.quantity
+      }
+    })
+
+    return { totalQty, brandCounts, locationCounts, conditionCounts, itemCount: filtered.length }
+  }, [filtered, stockData, locations])
+
+  const stockTotal = stockData.reduce((s, r) => s + r.quantity, 0)
+  const globalTotalQty = stockTotal > 0 ? stockTotal : items.reduce((s, i) => s + i.quantity, 0)
+
+  // Breadcrumb path for selected category
+  const selectedPath = useMemo(() => {
+    if (!selectedCategoryId) return ['All']
+    return getCategoryPath(selectedCategoryId, catMap)
+  }, [selectedCategoryId, catMap])
+
+  function toggleExpand(nodeId) {
+    setExpandedNodes(prev => ({ ...prev, [nodeId]: !prev[nodeId] }))
+  }
+
+  function selectCategory(catId) {
+    setSelectedCategoryId(catId)
+    setShowMobileTree(false)
+  }
+
+  const hasActiveFilters = searchTerm || filterBrand || filterStatus || filterCondition || filterLocation
+  const activeFilterCount = [filterBrand, filterStatus, filterCondition, filterLocation].filter(Boolean).length + (searchTerm ? 1 : 0)
+
+  function clearFilters() {
+    setSearchTerm('')
+    setFilterBrand('')
+    setFilterStatus('')
+    setFilterCondition('')
+    setFilterLocation('')
   }
 
   async function saveItem(formData, isEdit, itemId) {
@@ -107,16 +290,18 @@ export default function EquipmentPage() {
   }
 
   function exportCSV() {
-    const headers = ['Name', 'Category', 'Quantity', 'Condition', 'Status', 'Tag #', 'Notes']
-    const rows = items.map(item => [
-      item.name,
-      item.equipment_categories?.name || '',
-      getItemStockedQty(item.id) || item.quantity,
-      item.item_condition || '',
-      item.status || '',
-      item.tag_number || '',
-      item.notes || ''
-    ])
+    const headers = ['Name', 'Path', 'Brand', 'Quantity', 'Condition', 'Status', 'Tag #', 'Notes']
+    const rows = filtered.map(item => {
+      const path = item.category_id && catMap[item.category_id]
+        ? getCategoryPath(item.category_id, catMap).join(' / ')
+        : ''
+      return [
+        item.name, path, item.brand || '',
+        getItemStockedQty(item.id) || item.quantity,
+        item.item_condition || '', item.status || '',
+        item.tag_number || '', item.notes || ''
+      ]
+    })
     const csv = [headers, ...rows].map(r => r.map(c => '"' + String(c).replace(/"/g, '""') + '"').join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
@@ -128,107 +313,613 @@ export default function EquipmentPage() {
     addToast('Inventory exported')
   }
 
-  const filtered = items.filter(item => {
-    if (filterCategory && item.category_id !== filterCategory) return false
-    if (filterStatus && item.status !== filterStatus) return false
-    if (filterCondition && item.item_condition !== filterCondition) return false
-    if (filterLocation && item.storage_location_id !== filterLocation) return false
-    if (searchTerm && !item.name.toLowerCase().includes(searchTerm.toLowerCase())) return false
-    return true
-  })
-
-  function getItemStockedQty(itemId) {
-    return stockData.filter(s => s.equipment_item_id === itemId).reduce((sum, s) => sum + s.quantity, 0)
+  // Compact breadcrumb path for table — skip the top-level ancestor if it's redundant in context
+  function compactPath(catId) {
+    if (!catId || !catMap[catId]) return '—'
+    const parts = getCategoryPath(catId, catMap)
+    // If selected category is an ancestor, skip parts up to and including it
+    if (selectedCategoryId) {
+      const selPath = getCategoryPath(selectedCategoryId, catMap)
+      if (parts.length > selPath.length) {
+        const trimmed = parts.slice(selPath.length)
+        if (trimmed.length > 0) return trimmed.join(' / ')
+      }
+    }
+    // Otherwise show full but compact (skip root if > 2 levels deep)
+    if (parts.length > 2) return parts.slice(1).join(' / ')
+    return parts.join(' / ')
   }
-
-  const stockTotal = stockData.reduce((s, r) => s + r.quantity, 0)
-  const totalQty = stockTotal > 0 ? stockTotal : items.reduce((s, i) => s + i.quantity, 0)
-  const assignedQty = items.filter(i => i.status === 'assigned').reduce((s, i) => s + i.quantity, 0)
-  const availableQty = totalQty - assignedQty
-  const repairQty = items.filter(i => ['broken','damaged','needs_repair'].includes(i.item_condition)).reduce((s, i) => s + i.quantity, 0)
-
-  const categoryCounts = {}
-  items.forEach(item => {
-    const cat = item.equipment_categories?.name || 'Uncategorized'
-    categoryCounts[cat] = (categoryCounts[cat] || 0) + 1
-  })
 
   const cc = { 'new':'#16a34a','good':'#22c55e','fair':'#eab308','worn':'#f97316','damaged':'#ef4444','broken':'#dc2626','needs_repair':'#dc2626','retired':'#6b7280' }
   const sc = { 'available':'#16a34a','assigned':'#3b82f6','in_repair':'#f97316','lost':'#dc2626','retired':'#6b7280' }
 
   return (
     <>
-        <div className="page-header">
-          <div>
-            <h1>Equipment inventory</h1>
-            <p className="text-muted">{items.length} items · {totalQty} stocked · {assignedQty} assigned{repairQty > 0 ? ` · ${repairQty} needs repair` : ''}</p>
-            {Object.keys(categoryCounts).length > 0 && (
-              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
-                {Object.entries(categoryCounts).sort((a,b) => b[1] - a[1]).map(([cat, count]) => (
-                  <span key={cat} style={{ fontSize: '0.7rem', padding: '0.15rem 0.5rem', background: 'var(--green-50)', border: '1px solid var(--green-200)', borderRadius: '10px', color: 'var(--green-700)', fontWeight: 500 }}>{cat}: {count}</span>
-                ))}
+      {/* Header */}
+      <div className="page-header">
+        <div>
+          <h1>Equipment inventory</h1>
+          <p className="text-muted">{items.length} items · {globalTotalQty} stocked</p>
+        </div>
+        <div className="header-actions">
+          {canEdit && <button className="btn-secondary" onClick={exportCSV}>Export CSV</button>}
+          {canEdit && <button className="btn-primary" onClick={() => setShowAddModal(true)}>+ Add equipment</button>}
+        </div>
+      </div>
+
+      {/* Mobile breadcrumb picker */}
+      <div className="eq-mobile-breadcrumb">
+        <button className="eq-mobile-browse-btn" onClick={() => setShowMobileTree(true)}>
+          Browse: {selectedPath.join(' > ')} ▾
+        </button>
+        <button
+          className="eq-mobile-filter-btn"
+          onClick={() => setShowMobileFilters(true)}
+        >
+          Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+        </button>
+      </div>
+
+      {/* Main layout: sidebar tree + content */}
+      <div className="eq-layout">
+        {/* Desktop sidebar tree */}
+        <aside className="eq-sidebar">
+          <div className="eq-tree-header">Categories</div>
+          <button
+            className={`eq-tree-node eq-tree-root ${selectedCategoryId === null ? 'eq-tree-selected' : ''}`}
+            onClick={() => selectCategory(null)}
+          >
+            All ({items.length})
+          </button>
+          {treeRoots.map(node => (
+            <TreeNode
+              key={node.id}
+              node={node}
+              depth={0}
+              selectedId={selectedCategoryId}
+              expandedNodes={expandedNodes}
+              onSelect={selectCategory}
+              onToggle={toggleExpand}
+            />
+          ))}
+          {/* Uncategorized */}
+          {items.some(i => !i.category_id) && (
+            <button
+              className={`eq-tree-node ${selectedCategoryId === '__uncategorized__' ? 'eq-tree-selected' : ''}`}
+              style={{ paddingLeft: '0.75rem' }}
+              onClick={() => setSelectedCategoryId('__uncategorized__')}
+            >
+              Uncategorized ({items.filter(i => !i.category_id).length})
+            </button>
+          )}
+        </aside>
+
+        {/* Right content pane */}
+        <div className="eq-content">
+          {/* Summary card */}
+          <div className="eq-summary-card">
+            <div className="eq-summary-path">{selectedPath.join(' > ')}</div>
+            <div className="eq-summary-count">{summary.itemCount} items · {summary.totalQty} stocked</div>
+            {Object.keys(summary.brandCounts).length > 0 && (
+              <div className="eq-summary-row">
+                <span className="eq-summary-label">Brand:</span>
+                <div className="eq-summary-chips">
+                  {Object.entries(summary.brandCounts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([brand, qty]) => (
+                    <span key={brand} className="eq-chip">{brand} {qty}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {Object.keys(summary.locationCounts).length > 0 && (
+              <div className="eq-summary-row">
+                <span className="eq-summary-label">Location:</span>
+                <div className="eq-summary-chips">
+                  {Object.entries(summary.locationCounts).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([loc, qty]) => (
+                    <span key={loc} className="eq-chip">{loc} {qty}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {Object.keys(summary.conditionCounts).length > 0 && (
+              <div className="eq-summary-row">
+                <span className="eq-summary-label">Condition:</span>
+                <div className="eq-summary-chips">
+                  {Object.entries(summary.conditionCounts).sort((a, b) => b[1] - a[1]).map(([cond, qty]) => (
+                    <span key={cond} className="eq-chip">{cond.replace('_', ' ')} {qty}</span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
-          <div className="header-actions">
-            {canEdit && <button className="btn-secondary" onClick={exportCSV}>Export CSV</button>}
-            {canEdit && <button className="btn-primary" onClick={() => setShowAddModal(true)}>+ Add equipment</button>}
-          </div>
-        </div>
 
-        <div className="filters-bar">
-          <input type="text" placeholder="Search equipment..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="search-input" /><span className="text-muted" style={{ fontSize: '0.7rem' }}>Press / to search</span>
-          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}><option value="">All categories</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-          <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}><option value="">All statuses</option><option value="available">Available</option><option value="assigned">Assigned</option><option value="in_repair">In repair</option><option value="lost">Lost</option><option value="retired">Retired</option></select>
-          <select value={filterCondition} onChange={e => setFilterCondition(e.target.value)}><option value="">All conditions</option><option value="new">New</option><option value="good">Good</option><option value="fair">Fair</option><option value="worn">Worn</option><option value="damaged">Damaged</option><option value="broken">Broken</option><option value="needs_repair">Needs repair</option></select>
-          <select value={filterLocation} onChange={e => setFilterLocation(e.target.value)}><option value="">All locations</option><option value="unassigned">Unassigned</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select>
-          {(searchTerm || filterCategory || filterStatus || filterCondition || filterLocation) && (
-            <button onClick={() => { setSearchTerm(''); setFilterCategory(''); setFilterStatus(''); setFilterCondition(''); setFilterLocation('') }} style={{ background: 'none', border: 'none', color: 'var(--green-600)', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>Clear all filters</button>
+          {/* Filters bar (desktop) */}
+          <div className="eq-filters-bar">
+            <select value={filterBrand} onChange={e => setFilterBrand(e.target.value)}>
+              <option value="">All brands</option>
+              {allBrands.map(b => <option key={b} value={b}>{b}</option>)}
+            </select>
+            <select value={filterLocation} onChange={e => setFilterLocation(e.target.value)}>
+              <option value="">All locations</option>
+              <option value="unassigned">Unassigned</option>
+              {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+            <select value={filterCondition} onChange={e => setFilterCondition(e.target.value)}>
+              <option value="">All conditions</option>
+              <option value="new">New</option><option value="good">Good</option><option value="fair">Fair</option>
+              <option value="worn">Worn</option><option value="damaged">Damaged</option><option value="broken">Broken</option>
+              <option value="needs_repair">Needs repair</option>
+            </select>
+            <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+              <option value="">All statuses</option>
+              <option value="available">Available</option><option value="assigned">Assigned</option>
+              <option value="in_repair">In repair</option><option value="lost">Lost</option><option value="retired">Retired</option>
+            </select>
+            <input type="text" placeholder="Search..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="eq-search-input" />
+            {hasActiveFilters && (
+              <button onClick={clearFilters} className="eq-clear-filters">Clear</button>
+            )}
+          </div>
+
+          {/* Table */}
+          {loading ? (
+            <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div>
+          ) : filtered.length === 0 ? (
+            <div className="empty-state"><p>{items.length === 0 ? 'No equipment added yet.' : 'No items match your filters.'}</p></div>
+          ) : (
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Path</th>
+                    <th>Brand</th>
+                    <th>Qty</th>
+                    <th>Condition</th>
+                    <th>Status</th>
+                    <th>Tag</th>
+                    {canEdit && <th></th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map(item => (
+                    <tr key={item.id} onClick={() => setSelectedItem(item)} style={{ cursor: 'pointer' }}>
+                      <td className="item-name">
+                        <strong>{item.name}</strong>
+                        {item.model && <span className="item-detail">{item.model}</span>}
+                        {item.size && <span className="item-detail">{item.size}</span>}
+                      </td>
+                      <td className="text-muted" style={{ fontSize: '0.8rem', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {compactPath(item.category_id)}
+                      </td>
+                      <td style={{ fontSize: '0.85rem' }}>{item.brand || '—'}</td>
+                      <td>{getItemStockedQty(item.id) || item.quantity}</td>
+                      <td><span className="badge" style={{ backgroundColor: (cc[item.item_condition] || '#6b7280') + '20', color: cc[item.item_condition] || '#6b7280' }}>{(item.item_condition || '').replace('_', ' ')}</span></td>
+                      <td><span className="badge" style={{ backgroundColor: (sc[item.status] || '#6b7280') + '20', color: sc[item.status] || '#6b7280' }}>{(item.status || '').replace('_', ' ')}</span></td>
+                      <td className="text-muted" style={{ fontSize: '0.8rem' }}>{item.tag_number || '—'}</td>
+                      {canEdit && (
+                        <td>
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setEditingItem(item) }} title="Edit">✎</button>
+                            <button className="btn-icon-sm btn-icon-danger" onClick={e => { e.stopPropagation(); deleteItem(item.id) }} title="Delete">✕</button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
+      </div>
 
-        {loading ? <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div> : filtered.length === 0 ? (
-          <div className="empty-state"><p>{items.length === 0 ? 'No equipment added yet.' : 'No items match your filters.'}</p></div>
-        ) : (
-          <div className="table-container">
-            <table className="data-table">
-              <thead><tr><th>Name</th><th>Category</th><th>Qty</th><th>Condition</th><th>Status</th><th>Tag</th><th></th></tr></thead>
-              <tbody>
-                {filtered.map(item => (
-                  <tr key={item.id} onClick={() => setSelectedItem(item)} style={{ cursor: 'pointer' }}>
-                    <td className="item-name"><strong>{item.name}</strong>{item.brand && <span className="item-detail">{item.brand} {item.model||''}</span>}{item.size && <span className="item-detail">{item.size}</span>}</td>
-                    <td>{item.equipment_categories?.name || '—'}</td>
-                    <td>{getItemStockedQty(item.id) || item.quantity}</td>
-                    <td><span className="badge" style={{ backgroundColor:(cc[item.item_condition]||'#6b7280')+'20', color:cc[item.item_condition]||'#6b7280' }}>{item.item_condition.replace('_',' ')}</span></td>
-                    <td><span className="badge" style={{ backgroundColor:(sc[item.status]||'#6b7280')+'20', color:sc[item.status]||'#6b7280' }}>{item.status.replace('_',' ')}</span></td>
-                    <td className="text-muted" style={{ fontSize: '0.8rem' }}>{item.tag_number || '—'}</td>
-                    {canEdit && <td><div style={{display:'flex',gap:'0.25rem'}}><button className="btn-icon-sm" onClick={() => setEditingItem(item)} title="Edit">✎</button><button className="btn-icon-sm btn-icon-danger" onClick={() => deleteItem(item.id)} title="Delete">✕</button></div></td>}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* Mobile tree picker overlay */}
+      {showMobileTree && (
+        <div className="eq-mobile-overlay" onClick={() => setShowMobileTree(false)}>
+          <div className="eq-mobile-sheet" onClick={e => e.stopPropagation()}>
+            <div className="eq-mobile-sheet-header">
+              <h3>Browse categories</h3>
+              <button className="btn-icon" onClick={() => setShowMobileTree(false)}>✕</button>
+            </div>
+            <div className="eq-mobile-sheet-body">
+              <button
+                className={`eq-tree-node eq-tree-root ${selectedCategoryId === null ? 'eq-tree-selected' : ''}`}
+                onClick={() => selectCategory(null)}
+              >
+                All ({items.length})
+              </button>
+              {treeRoots.map(node => (
+                <TreeNode
+                  key={node.id}
+                  node={node}
+                  depth={0}
+                  selectedId={selectedCategoryId}
+                  expandedNodes={expandedNodes}
+                  onSelect={selectCategory}
+                  onToggle={toggleExpand}
+                />
+              ))}
+              {items.some(i => !i.category_id) && (
+                <button
+                  className={`eq-tree-node ${selectedCategoryId === '__uncategorized__' ? 'eq-tree-selected' : ''}`}
+                  style={{ paddingLeft: '0.75rem' }}
+                  onClick={() => { setSelectedCategoryId('__uncategorized__'); setShowMobileTree(false) }}
+                >
+                  Uncategorized ({items.filter(i => !i.category_id).length})
+                </button>
+              )}
+            </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {(showAddModal || editingItem) && (
-          <SmartAddModal
-            item={editingItem}
-            categories={categories}
-            locations={locations}
-            orgId={currentOrg.id}
-            onSave={saveItem}
-            onClose={() => { setShowAddModal(false); setEditingItem(null) }}
-          />
-        )}
-        {selectedItem && <ItemDetailModal item={selectedItem} locationStock={stockData} locations={locations} canEdit={canEdit} onClose={() => { setSelectedItem(null); fetchAll() }} />}
-      <style>{`
-        .btn-icon-sm { background:none; border:none; color:var(--gray-400); cursor:pointer; font-size:0.85rem; padding:0.2rem 0.4rem; border-radius:4px; transition:color .15s,background .15s; line-height:1; }
-        .btn-icon-sm:hover { color:var(--green-700); background:var(--green-100); }
-        .btn-icon-danger:hover { color:var(--red-500)!important; background:var(--red-100)!important; }
-      `}</style>
+      {/* Mobile filters bottom sheet */}
+      {showMobileFilters && (
+        <div className="eq-mobile-overlay" onClick={() => setShowMobileFilters(false)}>
+          <div className="eq-mobile-sheet" onClick={e => e.stopPropagation()}>
+            <div className="eq-mobile-sheet-header">
+              <h3>Filters</h3>
+              <button className="btn-icon" onClick={() => setShowMobileFilters(false)}>✕</button>
+            </div>
+            <div className="eq-mobile-sheet-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div className="form-group">
+                <label>Brand</label>
+                <select value={filterBrand} onChange={e => setFilterBrand(e.target.value)}>
+                  <option value="">All brands</option>
+                  {allBrands.map(b => <option key={b} value={b}>{b}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Location</label>
+                <select value={filterLocation} onChange={e => setFilterLocation(e.target.value)}>
+                  <option value="">All locations</option>
+                  <option value="unassigned">Unassigned</option>
+                  {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Condition</label>
+                <select value={filterCondition} onChange={e => setFilterCondition(e.target.value)}>
+                  <option value="">All conditions</option>
+                  <option value="new">New</option><option value="good">Good</option><option value="fair">Fair</option>
+                  <option value="worn">Worn</option><option value="damaged">Damaged</option><option value="broken">Broken</option>
+                  <option value="needs_repair">Needs repair</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Status</label>
+                <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+                  <option value="">All statuses</option>
+                  <option value="available">Available</option><option value="assigned">Assigned</option>
+                  <option value="in_repair">In repair</option><option value="lost">Lost</option><option value="retired">Retired</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Search</label>
+                <input type="text" placeholder="Search equipment..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+                {hasActiveFilters && <button className="btn-secondary" onClick={clearFilters} style={{ flex: 1 }}>Clear all</button>}
+                <button className="btn-primary" onClick={() => setShowMobileFilters(false)} style={{ flex: 1 }}>Apply</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(showAddModal || editingItem) && (
+        <SmartAddModal
+          item={editingItem}
+          categories={categories}
+          locations={locations}
+          orgId={currentOrg.id}
+          onSave={saveItem}
+          onClose={() => { setShowAddModal(false); setEditingItem(null) }}
+        />
+      )}
+      {selectedItem && <ItemDetailModal item={selectedItem} locationStock={stockData} locations={locations} canEdit={canEdit} onClose={() => { setSelectedItem(null); fetchAll() }} />}
+
+      <style>{equipmentStyles}</style>
     </>
   )
 }
+
+// --- Tree node component ---
+
+function TreeNode({ node, depth, selectedId, expandedNodes, onSelect, onToggle }) {
+  const hasChildren = node.children.length > 0
+  const isExpanded = expandedNodes[node.id]
+  const isSelected = selectedId === node.id
+
+  return (
+    <>
+      <div className={`eq-tree-node ${isSelected ? 'eq-tree-selected' : ''}`} style={{ paddingLeft: `${0.75 + depth * 1}rem` }}>
+        {hasChildren ? (
+          <button className="eq-tree-toggle" onClick={() => onToggle(node.id)}>
+            {isExpanded ? '▼' : '▶'}
+          </button>
+        ) : (
+          <span className="eq-tree-toggle-spacer" />
+        )}
+        <button className="eq-tree-label" onClick={() => onSelect(node.id)}>
+          {node.name} <span className="eq-tree-count">({node.totalCount})</span>
+        </button>
+      </div>
+      {hasChildren && isExpanded && node.children.map(child => (
+        <TreeNode
+          key={child.id}
+          node={child}
+          depth={depth + 1}
+          selectedId={selectedId}
+          expandedNodes={expandedNodes}
+          onSelect={onSelect}
+          onToggle={onToggle}
+        />
+      ))}
+    </>
+  )
+}
+
+// --- Styles ---
+
+const equipmentStyles = `
+  .eq-layout {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+  }
+  .eq-sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 0.5rem 0;
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 8rem);
+    overflow-y: auto;
+  }
+  .eq-tree-header {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--gray-500);
+    padding: 0.5rem 0.75rem 0.25rem;
+  }
+  .eq-tree-node {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-height: 32px;
+    padding: 0.2rem 0.75rem;
+    font-size: 0.8rem;
+    color: var(--gray-700);
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.1s;
+    text-align: left;
+  }
+  .eq-tree-node:hover {
+    background: var(--green-50);
+  }
+  .eq-tree-root {
+    font-weight: 600;
+    font-size: 0.85rem;
+  }
+  .eq-tree-selected {
+    background: var(--green-100) !important;
+    color: var(--green-800);
+    font-weight: 600;
+  }
+  .eq-tree-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.55rem;
+    color: var(--gray-400);
+    width: 16px;
+    flex-shrink: 0;
+    padding: 0;
+    line-height: 1;
+    font-family: inherit;
+  }
+  .eq-tree-toggle:hover {
+    color: var(--green-600);
+  }
+  .eq-tree-toggle-spacer {
+    width: 16px;
+    flex-shrink: 0;
+  }
+  .eq-tree-label {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+    padding: 0.1rem 0;
+    text-align: left;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .eq-tree-count {
+    color: var(--gray-400);
+    font-weight: 400;
+    font-size: 0.75rem;
+  }
+  .eq-content {
+    flex: 1;
+    min-width: 0;
+  }
+  .eq-summary-card {
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .eq-summary-path {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--green-800);
+    margin-bottom: 0.15rem;
+  }
+  .eq-summary-count {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    margin-bottom: 0.5rem;
+  }
+  .eq-summary-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+  }
+  .eq-summary-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--gray-500);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    min-width: 60px;
+    padding-top: 0.15rem;
+  }
+  .eq-summary-chips {
+    display: flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+  }
+  .eq-chip {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.45rem;
+    background: var(--green-50);
+    border: 1px solid var(--green-200);
+    border-radius: 10px;
+    color: var(--green-700);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .eq-filters-bar {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .eq-filters-bar select {
+    padding: 0.4rem 0.6rem;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    font-family: inherit;
+    color: var(--gray-700);
+    background: white;
+  }
+  .eq-search-input {
+    padding: 0.4rem 0.6rem;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius);
+    font-size: 0.8rem;
+    font-family: inherit;
+    min-width: 140px;
+  }
+  .eq-search-input:focus {
+    outline: none;
+    border-color: var(--green-500);
+  }
+  .eq-clear-filters {
+    background: none;
+    border: none;
+    color: var(--green-600);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-family: inherit;
+    font-weight: 500;
+  }
+  .eq-clear-filters:hover { color: var(--green-800); }
+
+  /* Mobile tree/filter controls */
+  .eq-mobile-breadcrumb {
+    display: none;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .eq-mobile-browse-btn, .eq-mobile-filter-btn {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: 1.5px solid var(--gray-200);
+    border-radius: var(--radius);
+    background: white;
+    font-size: 0.8rem;
+    font-family: inherit;
+    color: var(--gray-700);
+    cursor: pointer;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .eq-mobile-filter-btn { flex: none; }
+  .eq-mobile-browse-btn:hover, .eq-mobile-filter-btn:hover {
+    border-color: var(--green-400);
+  }
+
+  .eq-mobile-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 200;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .eq-mobile-sheet {
+    background: white;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    width: 100%;
+    max-width: 500px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .eq-mobile-sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .eq-mobile-sheet-header h3 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+  .eq-mobile-sheet-body {
+    overflow-y: auto;
+    padding: 0.5rem 0.5rem 1.5rem;
+  }
+
+  .btn-icon-sm { background:none; border:none; color:var(--gray-400); cursor:pointer; font-size:0.85rem; padding:0.2rem 0.4rem; border-radius:4px; transition:color .15s,background .15s; line-height:1; }
+  .btn-icon-sm:hover { color:var(--green-700); background:var(--green-100); }
+  .btn-icon-danger:hover { color:var(--red-500)!important; background:var(--red-100)!important; }
+
+  @media (max-width: 768px) {
+    .eq-sidebar { display: none; }
+    .eq-mobile-breadcrumb { display: flex; }
+    .eq-filters-bar { display: none; }
+    .eq-tree-node { min-height: 44px; }
+  }
+`
+
+// =================================================================
+// Below: existing modals (ItemDetailModal, SmartAddModal, sub-forms)
+// kept intact per spec — KEEP existing Add/Edit/Delete modals
+// =================================================================
 
 function ItemDetailModal({ item, locationStock, locations, canEdit, onClose }) {
   const { addToast } = useToast()
@@ -483,7 +1174,7 @@ function SmartAddModal({ item, categories, locations, orgId, onSave, onClose }) 
                 <select value={form.category_id} onChange={e => handleCatChange(e.target.value)}>
                   <option value="">Select or auto-assign</option>
                   {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  <option value="__new__">＋ Add new category...</option>
+                  <option value="__new__">+ Add new category...</option>
                 </select>
               )}
             </div>
@@ -520,7 +1211,7 @@ function SmartAddModal({ item, categories, locations, orgId, onSave, onClose }) 
                 <select value={form.storage_location_id} onChange={e => handleLocChange(e.target.value)}>
                   <option value="">Not assigned</option>
                   {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                  <option value="__new__">＋ Add new location...</option>
+                  <option value="__new__">+ Add new location...</option>
                 </select>
               )}
               <span className="form-hint" style={{ fontSize: '0.75rem', color: 'var(--gray-500)', marginTop: '0.25rem' }}>Sets this item's home/supply location</span>
