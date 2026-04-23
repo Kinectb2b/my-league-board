@@ -20,6 +20,8 @@ export default function Sidebar() {
     const access = {
       dashboard: ['admin','equipment_manager','coach','board_member','volunteer'],
       equipment: ['admin','equipment_manager','board_member'],
+      bagTemplates: ['admin','equipment_manager'],
+      teamBags: ['admin','equipment_manager'],
       teams: ['admin','equipment_manager','coach','board_member','volunteer'],
       locations: ['admin','equipment_manager','board_member'],
       treasurer: ['admin'],
@@ -59,6 +61,12 @@ export default function Sidebar() {
           </NavLink>}
           {canSee('equipment') && <NavLink to="/equipment" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">📦</span> Equipment
+          </NavLink>}
+          {canSee('bagTemplates') && <NavLink to="/bag-templates" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <span className="nav-icon">📋</span> Bag Templates
+          </NavLink>}
+          {canSee('teamBags') && <NavLink to="/team-bags" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <span className="nav-icon">🎒</span> Team Bags
           </NavLink>}
           {canSee('teams') && <NavLink to="/teams" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">👥</span> Teams
