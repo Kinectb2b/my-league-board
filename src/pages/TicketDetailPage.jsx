@@ -41,14 +41,14 @@ export default function TicketDetailPage() {
     setLoading(true)
     const [t, c, e, a, m] = await Promise.all([
       supabase.from('tickets')
-        .select('*, opener:opened_by(full_name), assignee:assigned_to(full_name), teams(name), divisions(name), storage_locations:location_id(name), equipment_items:equipment_item_id(name, brand), resolver:resolved_by(full_name)')
+        .select('*, teams(name), divisions(name), storage_locations:location_id(name), equipment_items:equipment_item_id(name, brand)')
         .eq('id', id).single(),
       supabase.from('ticket_comments')
-        .select('*, author:author_id(full_name)')
+        .select('*')
         .eq('ticket_id', id)
         .order('created_at', { ascending: true }),
       supabase.from('ticket_events')
-        .select('*, actor:actor_id(full_name)')
+        .select('*')
         .eq('ticket_id', id)
         .order('created_at', { ascending: true }),
       supabase.from('ticket_attachments')
@@ -59,13 +59,33 @@ export default function TicketDetailPage() {
         .select('profile_id, profiles:profile_id(full_name)')
         .eq('organization_id', currentOrg.id)
     ])
-    setTicket(t.data)
-    setComments(c.data || [])
-    setEvents(e.data || [])
+
+    // Resolve user names from profiles (FKs target auth.users which lacks full_name)
+    const rawTicket = t.data
+    const rawComments = c.data || []
+    const rawEvents = e.data || []
+    const userIds = [...new Set([
+      rawTicket?.opened_by, rawTicket?.assigned_to, rawTicket?.resolved_by,
+      ...rawComments.map(c => c.author_id),
+      ...rawEvents.map(e => e.actor_id)
+    ].filter(Boolean))]
+    const { data: profiles } = userIds.length
+      ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
+      : { data: [] }
+    const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]))
+
+    if (rawTicket) {
+      rawTicket.opener = { full_name: nameMap[rawTicket.opened_by] || null }
+      rawTicket.assignee = { full_name: nameMap[rawTicket.assigned_to] || null }
+      rawTicket.resolver = { full_name: nameMap[rawTicket.resolved_by] || null }
+    }
+    setTicket(rawTicket)
+    setComments(rawComments.map(c => ({ ...c, author: { full_name: nameMap[c.author_id] || null } })))
+    setEvents(rawEvents.map(e => ({ ...e, actor: { full_name: nameMap[e.actor_id] || null } })))
     setAttachments(a.data || [])
     setOrgMembers(m.data || [])
     setLoading(false)
-    if (t.data) document.title = `${t.data.title} | Tickets`
+    if (rawTicket) document.title = `${rawTicket.title} | Tickets`
   }
 
   if (loading) return <div className="loading-state" style={{ padding: '3rem' }}>Loading...</div>

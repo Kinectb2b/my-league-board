@@ -47,10 +47,22 @@ export default function TicketsPage() {
     setLoading(true)
     const { data } = await supabase
       .from('tickets')
-      .select('*, opener:opened_by(full_name), assignee:assigned_to(full_name)')
+      .select('*')
       .eq('organization_id', currentOrg.id)
       .order('updated_at', { ascending: false })
-    setTickets(data || [])
+
+    if (!data || data.length === 0) { setTickets(data || []); setLoading(false); return }
+
+    // Resolve names from profiles (opened_by FK targets auth.users which lacks full_name)
+    const userIds = [...new Set([...data.map(t => t.opened_by), ...data.map(t => t.assigned_to)].filter(Boolean))]
+    const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', userIds)
+    const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]))
+
+    setTickets(data.map(t => ({
+      ...t,
+      opener: { full_name: nameMap[t.opened_by] || null },
+      assignee: { full_name: nameMap[t.assigned_to] || null }
+    })))
     setLoading(false)
   }
 

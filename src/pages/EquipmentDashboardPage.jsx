@@ -85,16 +85,24 @@ export default function EquipmentDashboardPage() {
 
     // 3. Open equipment tickets
     supabase.from('tickets')
-      .select('*, opener:opened_by(full_name)')
+      .select('*')
       .eq('organization_id', orgId)
       .in('ticket_type', ['equipment_team_bag', 'equipment_baseroom', 'equipment_stock_request'])
       .in('status', ['open', 'in_progress'])
       .order('opened_at', { ascending: false })
       .limit(20)
-      .then(({ data }) => {
+      .then(async ({ data }) => {
+        const tickets = data || []
+        // Resolve opener names from profiles
+        const openerIds = [...new Set(tickets.map(t => t.opened_by).filter(Boolean))]
+        if (openerIds.length) {
+          const { data: profiles } = await supabase.from('profiles').select('id, full_name').in('id', openerIds)
+          const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name]))
+          tickets.forEach(t => { t.opener = { full_name: nameMap[t.opened_by] || null } })
+        }
         // Sort by priority
         const priorityOrder = { urgent: 0, high: 1, normal: 2, low: 3 }
-        const sorted = (data || []).sort((a, b) => (priorityOrder[a.priority] ?? 3) - (priorityOrder[b.priority] ?? 3))
+        const sorted = tickets.sort((a, b) => (priorityOrder[a.priority] ?? 3) - (priorityOrder[b.priority] ?? 3))
         setEquipTickets(sorted)
         setAttentionLoading(false)
       })

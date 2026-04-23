@@ -182,7 +182,7 @@ function TeamDetail({ team, showBackToList }) {
         .maybeSingle(),
       supabase
         .from('tickets')
-        .select('*, opener:opened_by(full_name), assignee:assigned_to(full_name)')
+        .select('*')
         .eq('organization_id', orgId)
         .eq('team_id', team.id)
         .order('updated_at', { ascending: false })
