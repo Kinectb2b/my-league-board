@@ -10,6 +10,7 @@ import { getAssigneeRoleForType } from './ticketRouting'
  * @returns {{ status: string, data?: object }}
  */
 export async function autoAssignBagForNewTeam(supabase, team) {
+  console.log('[auto-assign helper] entered', { team })
   try {
     const orgId = team.organization_id
 
@@ -21,32 +22,37 @@ export async function autoAssignBagForNewTeam(supabase, team) {
       .single()
 
     if (divErr || !division) {
+      console.log('[auto-assign helper] returning status', 'error', 'division not found')
       return { status: 'error', data: { error: divErr || new Error('Division not found') } }
     }
 
     // Step 2: Find matching kit_templates
     const { data: matchingTemplates, error: tmplErr } = await supabase
       .from('kit_templates')
-      .select('id, name, kit_template_items(id)')
+      .select('id, name, division_name, kit_template_items(id)')
       .eq('organization_id', orgId)
       .eq('sport_type_id', division.sport_type_id)
       .eq('auto_assign_on_team_create', true)
 
     if (tmplErr) {
+      console.log('[auto-assign helper] returning status', 'error', 'template query failed')
       return { status: 'error', data: { error: tmplErr } }
     }
 
     // Filter by division_name (case-insensitive, trimmed)
     const divNameLower = division.name.trim().toLowerCase()
+    console.log('[auto-assign helper] division name:', divNameLower, 'templates found:', matchingTemplates?.length, 'templates:', matchingTemplates?.map(t => ({ id: t.id, name: t.name, division_name: t.division_name })))
     const matched = (matchingTemplates || []).filter(
       t => t.division_name && t.division_name.trim().toLowerCase() === divNameLower
     )
 
     if (matched.length === 0) {
+      console.log('[auto-assign helper] returning status', 'no_template')
       return { status: 'no_template' }
     }
 
     if (matched.length > 1) {
+      console.log('[auto-assign helper] returning status', 'multiple_templates')
       return { status: 'multiple_templates', data: { templates: matched } }
     }
 
@@ -62,6 +68,7 @@ export async function autoAssignBagForNewTeam(supabase, team) {
       .single()
 
     if (!activeSeason) {
+      console.log('[auto-assign helper] returning status', 'no_active_season')
       return { status: 'no_active_season' }
     }
 
@@ -79,6 +86,7 @@ export async function autoAssignBagForNewTeam(supabase, team) {
       .single()
 
     if (bagErr) {
+      console.log('[auto-assign helper] returning status', 'error', 'bag insert failed')
       return { status: 'error', data: { error: bagErr } }
     }
 
@@ -117,11 +125,14 @@ export async function autoAssignBagForNewTeam(supabase, team) {
 
     if (ticketErr) {
       // Bag was created but ticket failed — still partially successful
+      console.log('[auto-assign helper] returning status', 'error', 'ticket insert failed')
       return { status: 'error', data: { error: ticketErr, teamBag } }
     }
 
+    console.log('[auto-assign helper] returning status', 'success', { teamBagId: teamBag.id, ticketId: ticket.id })
     return { status: 'success', data: { teamBag, ticket } }
   } catch (err) {
+    console.log('[auto-assign helper] returning status', 'error', 'caught exception')
     return { status: 'error', data: { error: err } }
   }
 }

@@ -58,7 +58,9 @@ export default function TeamsPage() {
   }
 
   async function handleAutoAssign(newTeam) {
+    console.log('[auto-assign] calling helper for new team', newTeam)
     const result = await autoAssignBagForNewTeam(supabase, newTeam)
+    console.log('[auto-assign] result', result)
     switch (result.status) {
       case 'success':
         addToast(`Bag assembly ticket opened for ${newTeam.name}`, 'success')
