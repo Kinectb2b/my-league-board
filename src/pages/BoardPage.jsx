@@ -411,7 +411,7 @@ function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClos
         welcome_message: welcomeMessage || null,
         invited_by: userId,
       })
-      .select('token')
+      .select('id, token')
       .single()
 
     if (insertError) {
@@ -428,7 +428,20 @@ function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClos
     setInviteLink(link)
 
     logActivity(orgId, 'invitation sent', 'member', fullName || email, selectedPos?.title || null)
-    addToast(`Invitation created for ${fullName || email}`)
+
+    // Send invitation email via Edge Function
+    const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+      'send-invitation-email',
+      { body: { invitation_id: data.id } }
+    )
+
+    if (emailError || !emailResult?.success) {
+      console.error('Email send failed', emailError || emailResult)
+      addToast('Invitation created but email failed to send. Share the link manually.', 'warning')
+    } else {
+      addToast(`Invitation sent to ${email}`)
+    }
+
     setSubmitting(false)
   }
 
