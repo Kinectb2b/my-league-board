@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
+import { autoAssignBagForNewTeam } from '../lib/autoAssignBag'
 
 export default function TeamsPage() {
   const { currentOrg, hasAnyRole } = useOrg()
@@ -56,6 +57,28 @@ export default function TeamsPage() {
     setTeams(t.data||[]); setDivisions(d.data||[]); setSeasons(s.data||[]); setSportTypes(sp.data||[]); setBags(b.data||[]); setTemplates(tmpl.data||[]); setMembers(mem.data||[]); setLoading(false)
   }
 
+  async function handleAutoAssign(newTeam) {
+    const result = await autoAssignBagForNewTeam(supabase, newTeam)
+    switch (result.status) {
+      case 'success':
+        addToast(`Bag assembly ticket opened for ${newTeam.name}`, 'success')
+        fetchAll()
+        break
+      case 'no_template':
+        break
+      case 'multiple_templates':
+        addToast('Multiple bag templates match this division — assign one manually via Team Bags.', 'warning')
+        break
+      case 'no_active_season':
+        addToast('No active season found — bag assembly deferred.', 'warning')
+        break
+      case 'error':
+        addToast('Team created, but bag auto-assignment failed. See console for details.', 'error')
+        console.error('Auto-assign bag error:', result.data?.error)
+        break
+    }
+  }
+
   function getTeamBag(teamId) { return bags.find(b => b.team_id === teamId && b.season_id === filterSeason) }
 
   async function duplicateTeam(team) {
@@ -85,9 +108,11 @@ export default function TeamsPage() {
 
   async function quickAddTeam(divisionId) {
     if (!quickAddName.trim()) return; setQuickAddSubmitting(true)
-    await supabase.from('teams').insert({ organization_id: currentOrg.id, name: quickAddName.trim(), division_id: divisionId, color: '#1a472a' })
+    const teamName = quickAddName.trim()
+    const { data: newTeam } = await supabase.from('teams').insert({ organization_id: currentOrg.id, name: teamName, division_id: divisionId, color: '#1a472a' }).select().single()
     setQuickAddName(''); setQuickAddDivisionId(null); setQuickAddSubmitting(false); fetchAll()
-    logActivity(currentOrg.id, 'added', 'team', quickAddName.trim())
+    logActivity(currentOrg.id, 'added', 'team', teamName)
+    if (newTeam) await handleAutoAssign(newTeam)
   }
 
   async function createBagFromTemplate(teamId, templateId, bagTag) {
@@ -275,7 +300,7 @@ export default function TeamsPage() {
         {showAddSport && <AddSportModal orgId={currentOrg.id} onDone={() => { setShowAddSport(false); fetchAll() }} onClose={() => setShowAddSport(false)} />}
         {showAddSeason && <AddSeasonModal orgId={currentOrg.id} onDone={() => { setShowAddSeason(false); fetchAll() }} onClose={() => setShowAddSeason(false)} />}
         {showAddDivision && <AddDivisionModal orgId={currentOrg.id} seasons={seasons} sportTypes={sportTypes} onDone={() => { setShowAddDivision(false); fetchAll(); addToast('Division added') }} onClose={() => setShowAddDivision(false)} />}
-        {showAddTeam && <AddTeamModal orgId={currentOrg.id} divisions={filteredDivisions.length > 0 ? filteredDivisions : divisions} sportTypes={sportTypes} members={members} onDone={() => { setShowAddTeam(false); fetchAll(); addToast('Team added') }} onClose={() => setShowAddTeam(false)} />}
+        {showAddTeam && <AddTeamModal orgId={currentOrg.id} divisions={filteredDivisions.length > 0 ? filteredDivisions : divisions} sportTypes={sportTypes} members={members} onDone={async (newTeam) => { setShowAddTeam(false); fetchAll(); addToast('Team added'); if (newTeam) { logActivity(currentOrg.id, 'added', 'team', newTeam.name); await handleAutoAssign(newTeam) } }} onClose={() => setShowAddTeam(false)} />}
         {editingTeam && <EditTeamModal team={editingTeam} divisions={divisions} members={members} onDone={() => { setEditingTeam(null); fetchAll() }} onClose={() => setEditingTeam(null)} />}
         {editingDivision && <EditDivisionModal division={editingDivision} seasons={seasons} sportTypes={sportTypes} onDone={() => { setEditingDivision(null); fetchAll() }} onClose={() => setEditingDivision(null)} />}
         {showAssignGear && <AssignGearModal team={showAssignGear} templates={templates} onAssign={createBagFromTemplate} onClose={() => setShowAssignGear(null)} />}
@@ -634,7 +659,7 @@ function AddDivisionModal({ orgId, seasons, sportTypes, onDone, onClose }) {
 function AddTeamModal({ orgId, divisions, sportTypes, members, onDone, onClose }) {
   const [name, setName] = useState(''); const [did, setDid] = useState(divisions[0]?.id||''); const [color, setColor] = useState('#1a472a'); const [coachId, setCoachId] = useState(''); const [sub, setSub] = useState(false); const [err, setErr] = useState('')
   const grouped = sportTypes.map(s => ({ sport: s, divs: divisions.filter(d => d.sport_type_id === s.id) })).filter(g => g.divs.length > 0)
-  async function go(e) { e.preventDefault(); setSub(true); const { error } = await supabase.from('teams').insert({ organization_id: orgId, name, division_id: did, color, head_coach_id: coachId || null }); if (error) setErr(error.message); else onDone(); setSub(false) }
+  async function go(e) { e.preventDefault(); setSub(true); const { data: newTeam, error } = await supabase.from('teams').insert({ organization_id: orgId, name, division_id: did, color, head_coach_id: coachId || null }).select().single(); if (error) setErr(error.message); else onDone(newTeam); setSub(false) }
   return (<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Add team</h2><button className="btn-icon" onClick={onClose}>✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-row"><div className="form-group"><label>Division *</label><select value={did} onChange={e => setDid(e.target.value)} required>{grouped.map(g => <optgroup key={g.sport.id} label={g.sport.name}>{g.divs.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}</optgroup>)}</select></div><div className="form-group"><label>Color</label><input type="color" value={color} onChange={e => setColor(e.target.value)} /></div></div><div className="form-group"><label>Head coach</label><select value={coachId} onChange={e => setCoachId(e.target.value)}><option value="">No coach assigned</option>{members.filter(m => ['admin','equipment_manager','coach'].includes(m.role)).map(m => <option key={m.profile_id} value={m.profile_id}>{m.profiles?.full_name || m.profiles?.email || 'Unknown'}</option>)}</select></div>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Adding...' : 'Add'}</button></div></form></div></div>)
 }
 
