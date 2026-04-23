@@ -24,6 +24,7 @@ import TicketDetailPage from './pages/TicketDetailPage'
 import BagTemplatesPage from './pages/BagTemplatesPage'
 import TeamBagsPage from './pages/TeamBagsPage'
 import TeamBagDetailPage from './pages/TeamBagDetailPage'
+import MyTeamPage from './pages/MyTeamPage'
 import AppLayout from './components/AppLayout'
 
 function ProtectedRoute({ children }) {
@@ -61,6 +62,8 @@ function AppRoutes() {
       <Route path="/bag-templates" element={<ProtectedRoute><BagTemplatesPage /></ProtectedRoute>} />
       <Route path="/team-bags" element={<ProtectedRoute><TeamBagsPage /></ProtectedRoute>} />
       <Route path="/team-bags/:id" element={<ProtectedRoute><TeamBagDetailPage /></ProtectedRoute>} />
+      <Route path="/my-team" element={<ProtectedRoute><MyTeamPage /></ProtectedRoute>} />
+      <Route path="/my-team/:team_id" element={<ProtectedRoute><MyTeamPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />

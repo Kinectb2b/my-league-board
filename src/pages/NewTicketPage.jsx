@@ -27,6 +27,7 @@ export default function NewTicketPage() {
   const [fileError, setFileError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [contextChip, setContextChip] = useState(null)
 
   // Context data for dropdowns
   const [teams, setTeams] = useState([])
@@ -51,6 +52,30 @@ export default function NewTicketPage() {
       })
     }
   }, [currentOrg])
+
+  // Pre-fill from team_bag_item_id query param
+  useEffect(() => {
+    const bagItemId = searchParams.get('team_bag_item_id')
+    if (!bagItemId || !currentOrg) return
+
+    supabase
+      .from('team_bag_items')
+      .select('id, equipment_categories(name), equipment_items(name, brand), team_bag_id, team_bags(team_id, teams(id, name))')
+      .eq('id', bagItemId)
+      .single()
+      .then(({ data }) => {
+        if (!data) return
+        const itemDesc = data.equipment_categories?.name || 'Item'
+        const itemDetail = data.equipment_items ? `${data.equipment_items.name}${data.equipment_items.brand ? ` (${data.equipment_items.brand})` : ''}` : ''
+        const teamName = data.team_bags?.teams?.name || ''
+        const derivedTeamId = data.team_bags?.teams?.id || ''
+
+        setTicketType('equipment_team_bag')
+        if (derivedTeamId && !teamId) setTeamId(derivedTeamId)
+        if (!title) setTitle(`Issue with ${itemDesc} — ${teamName}`)
+        setContextChip({ teamName, itemDesc, itemDetail })
+      })
+  }, [searchParams, currentOrg])
 
   function handleFiles(e) {
     const newFiles = Array.from(e.target.files)
@@ -123,6 +148,12 @@ export default function NewTicketPage() {
 
       <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', padding: '1.5rem', maxWidth: '640px' }}>
         <h1 style={{ fontSize: '1.3rem', fontWeight: 700, color: 'var(--green-900)', marginBottom: '1rem' }}>New ticket</h1>
+
+        {contextChip && (
+          <div style={{ padding: '0.6rem 0.85rem', background: 'var(--blue-100, #dbeafe)', border: '1px solid var(--blue-200, #bfdbfe)', borderRadius: 'var(--radius)', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--blue-800, #1e40af)' }}>
+            For: <strong>{contextChip.teamName}</strong> — {contextChip.itemDesc}{contextChip.itemDetail ? ` (${contextChip.itemDetail})` : ''}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           <div className="form-group">

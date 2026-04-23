@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { TICKET_TYPES, PRIORITY_COLORS, STATUS_COLORS, getTicketTypeConfig } from '../lib/ticketRouting'
+import { fetchCoachTeams } from '../lib/coachTeams'
 
 function timeAgo(date) {
   const s = Math.floor((Date.now() - new Date(date)) / 1000)
@@ -20,9 +21,11 @@ export default function TicketsPage() {
   const { currentOrg, hasAnyRole } = useOrg()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [tickets, setTickets] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('my')
+  const [coachTeamIds, setCoachTeamIds] = useState([])
   const [filterStatus, setFilterStatus] = useState('')
   const [filterType, setFilterType] = useState('')
   const [filterPriority, setFilterPriority] = useState('')
@@ -31,7 +34,14 @@ export default function TicketsPage() {
   const isElevated = hasAnyRole(['admin', 'equipment_manager', 'safety_officer'])
 
   useEffect(() => { document.title = 'Tickets | My League Board' }, [])
-  useEffect(() => { if (currentOrg) fetchTickets() }, [currentOrg])
+  useEffect(() => {
+    if (currentOrg && user) {
+      fetchTickets()
+      fetchCoachTeams(currentOrg.id, user.id).then(teams => {
+        setCoachTeamIds(teams.map(t => t.id))
+      })
+    }
+  }, [currentOrg, user])
 
   async function fetchTickets() {
     setLoading(true)
@@ -44,11 +54,15 @@ export default function TicketsPage() {
     setLoading(false)
   }
 
+  const teamFilter = searchParams.get('team') || ''
+
   const filtered = useMemo(() => {
     return tickets.filter(t => {
-      // Tab filter
-      if (tab === 'my' && t.opened_by !== user?.id) return false
+      // Tab filter — "my" now includes tickets opened by the user OR for their coached teams
+      if (tab === 'my' && t.opened_by !== user?.id && !coachTeamIds.includes(t.team_id)) return false
       if (tab === 'assigned' && t.assigned_to !== user?.id) return false
+      // Team filter from query param (e.g. from My Team page)
+      if (teamFilter && t.team_id !== teamFilter) return false
       // Dropdown filters
       if (filterStatus && t.status !== filterStatus) return false
       if (filterType && t.ticket_type !== filterType) return false
@@ -56,7 +70,7 @@ export default function TicketsPage() {
       if (searchTerm && !t.title.toLowerCase().includes(searchTerm.toLowerCase())) return false
       return true
     })
-  }, [tickets, tab, filterStatus, filterType, filterPriority, searchTerm, user])
+  }, [tickets, tab, filterStatus, filterType, filterPriority, searchTerm, user, coachTeamIds, teamFilter])
 
   const openCount = tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length
 

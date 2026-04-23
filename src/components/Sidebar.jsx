@@ -71,6 +71,9 @@ export default function Sidebar() {
           {canSee('dashboard') && <NavLink to="/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">📊</span> Dashboard
           </NavLink>}
+          <NavLink to="/my-team" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <span className="nav-icon">⚾</span> My Team
+          </NavLink>
           {canSee('dashboard') && <NavLink to="/tickets" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">🎫</span> Tickets{ticketBadge > 0 && <span style={{ marginLeft: 'auto', background: '#ef4444', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '10px', lineHeight: 1.2 }}>{ticketBadge}</span>}
           </NavLink>}
