@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useOrg } from '../contexts/OrgContext'
+import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
@@ -81,6 +82,7 @@ function getCategoryPath(catId, catMap) {
 
 export default function EquipmentPage() {
   const { currentOrg, hasAnyRole } = useOrg()
+  const { user } = useAuth()
   const { addToast } = useToast()
   const canEdit = hasAnyRole(['admin', 'equipment_manager'])
   const [items, setItems] = useState([])
@@ -100,6 +102,13 @@ export default function EquipmentPage() {
   const [expandedNodes, setExpandedNodes] = useState({})
   const [showMobileTree, setShowMobileTree] = useState(false)
   const [showMobileFilters, setShowMobileFilters] = useState(false)
+  // Stock event action modals
+  const [receiveItem, setReceiveItem] = useState(null)
+  const [transferItem, setTransferItem] = useState(null)
+  const [removeItem, setRemoveItem] = useState(null)
+  const [auditItem, setAuditItem] = useState(null)
+  const [historyItem, setHistoryItem] = useState(null)
+  const [openActionMenu, setOpenActionMenu] = useState(null)
 
   useEffect(() => { document.title = 'Equipment | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
@@ -343,6 +352,7 @@ export default function EquipmentPage() {
         </div>
         <div className="header-actions">
           {canEdit && <button className="btn-secondary" onClick={exportCSV}>Export CSV</button>}
+          {canEdit && <button className="btn-secondary" onClick={() => setReceiveItem({})}>+ Receive</button>}
           {canEdit && <button className="btn-primary" onClick={() => setShowAddModal(true)}>+ Add equipment</button>}
         </div>
       </div>
@@ -498,9 +508,22 @@ export default function EquipmentPage() {
                       <td className="text-muted" style={{ fontSize: '0.8rem' }}>{item.tag_number || '—'}</td>
                       {canEdit && (
                         <td>
-                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                          <div className="eq-row-actions">
                             <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setEditingItem(item) }} title="Edit">✎</button>
-                            <button className="btn-icon-sm btn-icon-danger" onClick={e => { e.stopPropagation(); deleteItem(item.id) }} title="Delete">✕</button>
+                            <div className="eq-action-menu-wrap">
+                              <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setOpenActionMenu(openActionMenu === item.id ? null : item.id) }} title="Actions">⋯</button>
+                              {openActionMenu === item.id && (
+                                <div className="eq-action-dropdown" onClick={e => e.stopPropagation()}>
+                                  <button onClick={() => { setReceiveItem(item); setOpenActionMenu(null) }}>+ Receive</button>
+                                  <button onClick={() => { setTransferItem(item); setOpenActionMenu(null) }}>→ Transfer</button>
+                                  <button onClick={() => { setRemoveItem(item); setOpenActionMenu(null) }}>− Remove</button>
+                                  <button onClick={() => { setAuditItem(item); setOpenActionMenu(null) }}>☑ Audit</button>
+                                  <button onClick={() => { setHistoryItem(item); setOpenActionMenu(null) }}>↕ History</button>
+                                  <div className="eq-action-divider" />
+                                  <button className="eq-action-danger" onClick={() => { deleteItem(item.id); setOpenActionMenu(null) }}>✕ Delete</button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                       )}
@@ -618,6 +641,66 @@ export default function EquipmentPage() {
         />
       )}
       {selectedItem && <ItemDetailModal item={selectedItem} locationStock={stockData} locations={locations} canEdit={canEdit} onClose={() => { setSelectedItem(null); fetchAll() }} />}
+
+      {receiveItem && (
+        <ReceiveModal
+          item={receiveItem.id ? receiveItem : null}
+          items={items}
+          locations={locations}
+          orgId={currentOrg.id}
+          userId={user?.id}
+          onDone={() => { setReceiveItem(null); fetchAll() }}
+          onClose={() => setReceiveItem(null)}
+          addToast={addToast}
+        />
+      )}
+      {transferItem && (
+        <TransferModal
+          item={transferItem}
+          locations={locations}
+          stockData={stockData}
+          orgId={currentOrg.id}
+          userId={user?.id}
+          onDone={() => { setTransferItem(null); fetchAll() }}
+          onClose={() => setTransferItem(null)}
+          addToast={addToast}
+        />
+      )}
+      {removeItem && (
+        <RemoveModal
+          item={removeItem}
+          locations={locations}
+          stockData={stockData}
+          orgId={currentOrg.id}
+          userId={user?.id}
+          onDone={() => { setRemoveItem(null); fetchAll() }}
+          onClose={() => setRemoveItem(null)}
+          addToast={addToast}
+        />
+      )}
+      {auditItem && (
+        <AuditModal
+          item={auditItem}
+          locations={locations}
+          stockData={stockData}
+          orgId={currentOrg.id}
+          userId={user?.id}
+          onDone={() => { setAuditItem(null); fetchAll() }}
+          onClose={() => setAuditItem(null)}
+          addToast={addToast}
+        />
+      )}
+      {historyItem && (
+        <HistoryModal
+          item={historyItem}
+          locations={locations}
+          orgId={currentOrg.id}
+          onClose={() => setHistoryItem(null)}
+        />
+      )}
+
+      {/* Close action menu on outside click */}
+      {openActionMenu && <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setOpenActionMenu(null)} />}
 
       <style>{equipmentStyles}</style>
     </>
@@ -908,6 +991,37 @@ const equipmentStyles = `
   .btn-icon-sm:hover { color:var(--green-700); background:var(--green-100); }
   .btn-icon-danger:hover { color:var(--red-500)!important; background:var(--red-100)!important; }
 
+  .eq-row-actions { display:flex; gap:0.25rem; align-items:center; }
+  .eq-action-menu-wrap { position:relative; }
+  .eq-action-dropdown {
+    position: absolute;
+    right: 0;
+    top: 100%;
+    z-index: 50;
+    background: white;
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    min-width: 150px;
+    padding: 0.25rem 0;
+  }
+  .eq-action-dropdown button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.45rem 0.75rem;
+    border: none;
+    background: none;
+    font-size: 0.8rem;
+    font-family: inherit;
+    color: var(--gray-700);
+    cursor: pointer;
+  }
+  .eq-action-dropdown button:hover { background: var(--green-50); color: var(--green-800); }
+  .eq-action-divider { height: 1px; background: var(--gray-200); margin: 0.25rem 0; }
+  .eq-action-danger { color: var(--red-500) !important; }
+  .eq-action-danger:hover { background: var(--red-100) !important; color: var(--red-500) !important; }
+
   @media (max-width: 1023px) {
     .eq-sidebar { display: none; }
     .eq-mobile-breadcrumb { display: flex; }
@@ -915,6 +1029,434 @@ const equipmentStyles = `
     .eq-tree-node { min-height: 44px; }
   }
 `
+
+// =================================================================
+// Stock event action modals
+// =================================================================
+
+function ReceiveModal({ item, items, locations, orgId, userId, onDone, onClose, addToast }) {
+  const [selectedItemId, setSelectedItemId] = useState(item?.id || '')
+  const [toLocationId, setToLocationId] = useState('')
+  const [cases, setCases] = useState(0)
+  const [loose, setLoose] = useState(0)
+  const [notes, setNotes] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const selectedItem = items.find(i => i.id === selectedItemId)
+  const caseSize = selectedItem?.case_size || 1
+  const total = (cases * caseSize) + loose
+
+  const filteredItems = searchTerm
+    ? items.filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    : items
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!selectedItemId || !toLocationId || total < 1) return
+    setSubmitting(true)
+    const { error } = await supabase.from('stock_events').insert({
+      organization_id: orgId,
+      equipment_item_id: selectedItemId,
+      event_type: 'receive',
+      to_location_id: toLocationId,
+      from_location_id: null,
+      quantity: total,
+      notes: notes || null,
+      created_by: userId
+    })
+    setSubmitting(false)
+    if (error) { addToast(error.message, 'error'); return }
+    addToast(`Received ${total} units`)
+    onDone()
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header"><h2>Receive stock</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-group">
+            <label>Item</label>
+            {item ? (
+              <input type="text" value={item.name} disabled />
+            ) : (
+              <>
+                <input type="text" placeholder="Search items..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                <select value={selectedItemId} onChange={e => setSelectedItemId(e.target.value)}>
+                  <option value="">Select item...</option>
+                  {filteredItems.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </select>
+              </>
+            )}
+          </div>
+          <div className="form-group">
+            <label>To location</label>
+            <select value={toLocationId} onChange={e => setToLocationId(e.target.value)} required>
+              <option value="">Select location...</option>
+              {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Cases{caseSize > 1 ? ` (${caseSize}/case)` : ''}</label>
+              <input type="number" min="0" value={cases} onChange={e => setCases(parseInt(e.target.value) || 0)} />
+            </div>
+            <div className="form-group">
+              <label>Loose</label>
+              <input type="number" min="0" value={loose} onChange={e => setLoose(parseInt(e.target.value) || 0)} />
+            </div>
+            <div className="form-group">
+              <label>Total</label>
+              <input type="text" value={`= ${total} units`} disabled />
+            </div>
+          </div>
+          <div className="form-group">
+            <label>Notes</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Optional" />
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={submitting || !selectedItemId || !toLocationId || total < 1}>{submitting ? 'Saving...' : `Receive ${total} units`}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function TransferModal({ item, locations, stockData, orgId, userId, onDone, onClose, addToast }) {
+  const itemStock = stockData.filter(s => s.equipment_item_id === item.id && s.quantity > 0)
+  const [fromLocationId, setFromLocationId] = useState('')
+  const [toLocationId, setToLocationId] = useState('')
+  const [quantity, setQuantity] = useState(1)
+  const [reason, setReason] = useState('')
+  const [notes, setNotes] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const fromStock = itemStock.find(s => s.storage_location_id === fromLocationId)
+  const maxQty = fromStock?.quantity || 0
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!fromLocationId || !toLocationId || quantity < 1 || quantity > maxQty) return
+    setSubmitting(true)
+    const { error } = await supabase.from('stock_events').insert({
+      organization_id: orgId,
+      equipment_item_id: item.id,
+      event_type: 'transfer',
+      from_location_id: fromLocationId,
+      to_location_id: toLocationId,
+      quantity,
+      reason: reason || null,
+      notes: notes || null,
+      created_by: userId
+    })
+    setSubmitting(false)
+    if (error) { addToast(error.message, 'error'); return }
+    addToast(`Transferred ${quantity} units`)
+    onDone()
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header"><h2>Transfer: {item.name}</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-group">
+            <label>From location</label>
+            <select value={fromLocationId} onChange={e => { setFromLocationId(e.target.value); setQuantity(1) }} required>
+              <option value="">Select...</option>
+              {itemStock.map(s => {
+                const loc = locations.find(l => l.id === s.storage_location_id)
+                return <option key={s.storage_location_id} value={s.storage_location_id}>{loc?.name || 'Unknown'} ({s.quantity} available)</option>
+              })}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>To location</label>
+            <select value={toLocationId} onChange={e => setToLocationId(e.target.value)} required>
+              <option value="">Select...</option>
+              {locations.filter(l => l.id !== fromLocationId).map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Quantity (max {maxQty})</label>
+            <input type="number" min="1" max={maxQty} value={quantity} onChange={e => setQuantity(Math.min(parseInt(e.target.value) || 1, maxQty))} required />
+          </div>
+          <div className="form-group">
+            <label>Reason</label>
+            <select value={reason} onChange={e => setReason(e.target.value)}>
+              <option value="">Optional...</option>
+              <option value="Restock baseroom">Restock baseroom</option>
+              <option value="Game prep">Game prep</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Notes</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Optional" />
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={submitting || !fromLocationId || !toLocationId || quantity < 1}>{submitting ? 'Saving...' : 'Transfer'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+const REMOVE_REASONS = [
+  { label: 'Used in game', eventType: 'consume' },
+  { label: 'Lost', eventType: 'consume' },
+  { label: 'Damaged', eventType: 'damage' },
+  { label: 'Retired / end of life', eventType: 'retire' },
+  { label: 'Other', eventType: 'consume' },
+]
+
+function RemoveModal({ item, locations, stockData, orgId, userId, onDone, onClose, addToast }) {
+  const itemStock = stockData.filter(s => s.equipment_item_id === item.id && s.quantity > 0)
+  const [fromLocationId, setFromLocationId] = useState('')
+  const [quantity, setQuantity] = useState(1)
+  const [reasonIdx, setReasonIdx] = useState('')
+  const [notes, setNotes] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const fromStock = itemStock.find(s => s.storage_location_id === fromLocationId)
+  const maxQty = fromStock?.quantity || 0
+  const selectedReason = reasonIdx !== '' ? REMOVE_REASONS[parseInt(reasonIdx)] : null
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!fromLocationId || !selectedReason || quantity < 1 || quantity > maxQty) return
+    setSubmitting(true)
+    const { error } = await supabase.from('stock_events').insert({
+      organization_id: orgId,
+      equipment_item_id: item.id,
+      event_type: selectedReason.eventType,
+      from_location_id: fromLocationId,
+      to_location_id: null,
+      quantity,
+      reason: selectedReason.label,
+      notes: notes || null,
+      created_by: userId
+    })
+    setSubmitting(false)
+    if (error) { addToast(error.message, 'error'); return }
+    addToast(`Removed ${quantity} units (${selectedReason.label.toLowerCase()})`)
+    onDone()
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header"><h2>Remove: {item.name}</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-group">
+            <label>From location</label>
+            <select value={fromLocationId} onChange={e => { setFromLocationId(e.target.value); setQuantity(1) }} required>
+              <option value="">Select...</option>
+              {itemStock.map(s => {
+                const loc = locations.find(l => l.id === s.storage_location_id)
+                return <option key={s.storage_location_id} value={s.storage_location_id}>{loc?.name || 'Unknown'} ({s.quantity} available)</option>
+              })}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Quantity (max {maxQty})</label>
+            <input type="number" min="1" max={maxQty} value={quantity} onChange={e => setQuantity(Math.min(parseInt(e.target.value) || 1, maxQty))} required />
+          </div>
+          <div className="form-group">
+            <label>Reason *</label>
+            <select value={reasonIdx} onChange={e => setReasonIdx(e.target.value)} required>
+              <option value="">Select reason...</option>
+              {REMOVE_REASONS.map((r, i) => <option key={i} value={i}>{r.label}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Notes</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="Optional" />
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={submitting || !fromLocationId || reasonIdx === '' || quantity < 1}>{submitting ? 'Saving...' : 'Remove'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function AuditModal({ item, locations, stockData, orgId, userId, onDone, onClose, addToast }) {
+  const itemStock = stockData.filter(s => s.equipment_item_id === item.id)
+  const [fromLocationId, setFromLocationId] = useState('')
+  const [actualCount, setActualCount] = useState('')
+  const [notes, setNotes] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const fromStock = itemStock.find(s => s.storage_location_id === fromLocationId)
+  const systemCount = fromStock?.quantity ?? 0
+  const delta = actualCount !== '' ? parseInt(actualCount) - systemCount : null
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!fromLocationId || actualCount === '' || delta === null || delta === 0) return
+    setSubmitting(true)
+    const { error } = await supabase.from('stock_events').insert({
+      organization_id: orgId,
+      equipment_item_id: item.id,
+      event_type: 'audit',
+      from_location_id: fromLocationId,
+      to_location_id: null,
+      quantity: delta,
+      reason: `Physical count: ${actualCount} (was ${systemCount})`,
+      notes: notes || null,
+      created_by: userId
+    })
+    setSubmitting(false)
+    if (error) { addToast(error.message, 'error'); return }
+    addToast(`Audit recorded: ${delta > 0 ? '+' : ''}${delta}`)
+    onDone()
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header"><h2>Audit: {item.name}</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <form onSubmit={handleSubmit} className="modal-form">
+          <div className="form-group">
+            <label>Location</label>
+            <select value={fromLocationId} onChange={e => { setFromLocationId(e.target.value); setActualCount('') }} required>
+              <option value="">Select...</option>
+              {itemStock.map(s => {
+                const loc = locations.find(l => l.id === s.storage_location_id)
+                return <option key={s.storage_location_id} value={s.storage_location_id}>{loc?.name || 'Unknown'} (system: {s.quantity})</option>
+              })}
+              {locations.filter(l => !itemStock.some(s => s.storage_location_id === l.id)).map(l => (
+                <option key={l.id} value={l.id}>{l.name} (system: 0)</option>
+              ))}
+            </select>
+          </div>
+          {fromLocationId && (
+            <>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>System count</label>
+                  <input type="text" value={systemCount} disabled />
+                </div>
+                <div className="form-group">
+                  <label>Actual count</label>
+                  <input type="number" min="0" value={actualCount} onChange={e => setActualCount(e.target.value)} placeholder="Enter physical count" required />
+                </div>
+              </div>
+              {delta !== null && delta !== 0 && (
+                <div style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius)', background: delta > 0 ? 'var(--green-50)' : 'var(--red-100)', color: delta > 0 ? 'var(--green-700)' : 'var(--red-500)', fontSize: '0.85rem', fontWeight: 600 }}>
+                  Delta: {delta > 0 ? '+' : ''}{delta} units
+                </div>
+              )}
+              {delta === 0 && actualCount !== '' && (
+                <div style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius)', background: 'var(--gray-100)', color: 'var(--gray-600)', fontSize: '0.85rem' }}>
+                  Counts match — no adjustment needed
+                </div>
+              )}
+            </>
+          )}
+          <div className="form-group">
+            <label>Notes</label>
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} placeholder="E.g., Found 2 extra behind catchers gear" />
+          </div>
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={submitting || !fromLocationId || delta === null || delta === 0}>{submitting ? 'Saving...' : 'Record audit'}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function HistoryModal({ item, locations, orgId, onClose }) {
+  const [events, setEvents] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.from('stock_events')
+      .select('*, profiles:created_by(full_name)')
+      .eq('equipment_item_id', item.id)
+      .order('created_at', { ascending: false })
+      .limit(20)
+      .then(({ data, error }) => {
+        if (error) {
+          // profiles join may fail — retry without it
+          supabase.from('stock_events')
+            .select('*')
+            .eq('equipment_item_id', item.id)
+            .order('created_at', { ascending: false })
+            .limit(20)
+            .then(({ data: d2 }) => { setEvents(d2 || []); setLoading(false) })
+        } else {
+          setEvents(data || [])
+          setLoading(false)
+        }
+      })
+  }, [item.id])
+
+  function locName(id) {
+    if (!id) return '—'
+    const l = locations.find(loc => loc.id === id)
+    return l?.name || 'Unknown'
+  }
+
+  const typeColors = {
+    receive: '#16a34a', transfer: '#3b82f6', consume: '#f97316',
+    damage: '#ef4444', retire: '#6b7280', audit: '#8b5cf6'
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: '640px' }} onClick={e => e.stopPropagation()}>
+        <div className="modal-header"><h2>History: {item.name}</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <div className="modal-form">
+          {loading ? (
+            <div className="loading-state">Loading...</div>
+          ) : events.length === 0 ? (
+            <p className="text-muted">No stock events recorded yet.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              {events.map(ev => (
+                <div key={ev.id} style={{ padding: '0.6rem 0.75rem', background: 'var(--gray-50)', borderRadius: 'var(--radius)', border: '1px solid var(--gray-100)', fontSize: '0.8rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.2rem' }}>
+                    <span className="badge" style={{ backgroundColor: (typeColors[ev.event_type] || '#6b7280') + '20', color: typeColors[ev.event_type] || '#6b7280' }}>{ev.event_type}</span>
+                    <span className="text-muted" style={{ fontSize: '0.75rem' }}>{new Date(ev.created_at).toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    {ev.event_type === 'transfer' ? (
+                      <span>{locName(ev.from_location_id)} → {locName(ev.to_location_id)}</span>
+                    ) : ev.event_type === 'receive' ? (
+                      <span>→ {locName(ev.to_location_id)}</span>
+                    ) : (
+                      <span>{locName(ev.from_location_id)}</span>
+                    )}
+                    <span style={{ fontWeight: 600 }}>
+                      {ev.event_type === 'audit' ? (ev.quantity > 0 ? '+' : '') + ev.quantity : ev.quantity} units
+                    </span>
+                  </div>
+                  {ev.reason && <div className="text-muted" style={{ marginTop: '0.15rem' }}>{ev.reason}</div>}
+                  {ev.notes && <div style={{ marginTop: '0.15rem', fontStyle: 'italic', color: 'var(--gray-500)' }}>{ev.notes}</div>}
+                  {ev.profiles?.full_name && <div className="text-muted" style={{ marginTop: '0.15rem', fontSize: '0.75rem' }}>by {ev.profiles.full_name}</div>}
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="modal-actions" style={{ marginTop: '1rem' }}>
+            <button className="btn-secondary" onClick={onClose}>Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // =================================================================
 // Below: existing modals (ItemDetailModal, SmartAddModal, sub-forms)
