@@ -74,8 +74,11 @@ export default function Sidebar() {
           {canSee('dashboard') && <NavLink to="/tickets" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">🎫</span> Tickets{ticketBadge > 0 && <span style={{ marginLeft: 'auto', background: '#ef4444', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '10px', lineHeight: 1.2 }}>{ticketBadge}</span>}
           </NavLink>}
+          {canSee('bagTemplates') && <NavLink to="/equipment/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+            <span className="nav-icon">🏠</span> Equipment Home
+          </NavLink>}
           {canSee('equipment') && <NavLink to="/equipment" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
-            <span className="nav-icon">📦</span> Equipment
+            <span className="nav-icon">📦</span> Inventory
           </NavLink>}
           {canSee('bagTemplates') && <NavLink to="/bag-templates" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">📋</span> Bag Templates

@@ -6,6 +6,7 @@ import AuthPage from './pages/AuthPage'
 import OrgSetupPage from './pages/OrgSetupPage'
 import Dashboard from './pages/Dashboard'
 import EquipmentPage from './pages/EquipmentPage'
+import EquipmentDashboardPage from './pages/EquipmentDashboardPage'
 import TeamsPage from './pages/TeamsPage'
 import LocationsPage from './pages/LocationsPage'
 import MembersPage from './pages/MembersPage'
@@ -46,6 +47,7 @@ function AppRoutes() {
       <Route path="/auth" element={user ? <Navigate to="/dashboard" /> : <AuthPage />} />
       <Route path="/setup" element={!user ? <Navigate to="/auth" /> : (currentOrg ? <Navigate to="/dashboard" /> : <OrgSetupPage />)} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/equipment/dashboard" element={<ProtectedRoute><EquipmentDashboardPage /></ProtectedRoute>} />
       <Route path="/equipment" element={<ProtectedRoute><EquipmentPage /></ProtectedRoute>} />
       <Route path="/teams" element={<ProtectedRoute><TeamsPage /></ProtectedRoute>} />
       <Route path="/locations" element={<ProtectedRoute><LocationsPage /></ProtectedRoute>} />
