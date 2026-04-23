@@ -908,7 +908,7 @@ const equipmentStyles = `
   .btn-icon-sm:hover { color:var(--green-700); background:var(--green-100); }
   .btn-icon-danger:hover { color:var(--red-500)!important; background:var(--red-100)!important; }
 
-  @media (max-width: 768px) {
+  @media (max-width: 1023px) {
     .eq-sidebar { display: none; }
     .eq-mobile-breadcrumb { display: flex; }
     .eq-filters-bar { display: none; }
