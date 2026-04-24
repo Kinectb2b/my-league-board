@@ -38,11 +38,11 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Fetch invitation with org name, inviter name, board position, and team (if scoped)
+    // Fetch invitation with org name, inviter name, and board position
     const { data: invitation, error: fetchErr } = await supabase
       .from("invitations")
       .select(
-        "*, organizations(name), inviter:invited_by(full_name), board_positions(title), teams:scope_id(name)"
+        "*, organizations(name), inviter:invited_by(full_name), board_positions(title)"
       )
       .eq("id", invitation_id)
       .single();
@@ -54,17 +54,29 @@ Deno.serve(async (req: Request) => {
       );
     }
 
+    // Fetch team name separately when invitation is team-scoped
+    // (scope_id has no FK to teams, so we can't use a Supabase join)
+    let teamName: string | null = null;
+    if (invitation.scope_type === "team" && invitation.scope_id) {
+      const { data: team } = await supabase
+        .from("teams")
+        .select("name")
+        .eq("id", invitation.scope_id)
+        .single();
+      teamName = team?.name || null;
+    }
+
     const orgName = invitation.organizations?.name || "your league";
     const inviterName = invitation.inviter?.full_name || "A league admin";
     const recipientName = invitation.full_name || "there";
     const boardPosition = invitation.board_positions?.title || null;
-    const teamName = invitation.scope_type === "team" ? invitation.teams?.name : null;
     const welcomeMessage = invitation.welcome_message || null;
     const inviteUrl = `${siteUrl}/accept-invite?token=${invitation.token}`;
+    const isTeamInvite = !!teamName;
 
     // Build HTML email — team-scoped invitations get team-specific messaging
-    const positionLine = teamName
-      ? ` as an <strong>Assistant Coach</strong> for the <strong>${teamName}</strong> team`
+    const positionLine = isTeamInvite
+      ? ""
       : boardPosition
         ? ` as <strong>${boardPosition}</strong>`
         : "";
@@ -86,7 +98,10 @@ Deno.serve(async (req: Request) => {
     <div style="padding:32px;">
       <p style="margin:0 0 16px;font-size:16px;color:#111827;">Hi ${recipientName},</p>
       <p style="margin:0 0 16px;font-size:16px;color:#111827;">
-        ${inviterName} has invited you to join <strong>${orgName}</strong> on My League Board${positionLine}.
+        ${isTeamInvite
+          ? `${inviterName} has invited you to assistant coach <strong>${teamName}</strong> for ${orgName} on My League Board.`
+          : `${inviterName} has invited you to join <strong>${orgName}</strong> on My League Board${positionLine}.`
+        }
       </p>
       ${messagBlock}
       <div style="margin:28px 0;text-align:center;">
@@ -107,7 +122,10 @@ Deno.serve(async (req: Request) => {
 
     const text = `Hi ${recipientName},
 
-${inviterName} has invited you to join ${orgName} on My League Board${teamName ? ` as an Assistant Coach for the ${teamName} team` : boardPosition ? ` as ${boardPosition}` : ""}.
+${isTeamInvite
+  ? `${inviterName} has invited you to assistant coach ${teamName} for ${orgName} on My League Board.`
+  : `${inviterName} has invited you to join ${orgName} on My League Board${boardPosition ? ` as ${boardPosition}` : ""}.`
+}
 ${welcomeMessage ? `\nMessage from ${inviterName}:\n"${welcomeMessage}"\n` : ""}
 Accept your invitation: ${inviteUrl}
 
@@ -125,7 +143,9 @@ This invitation expires in 7 days. If you weren't expecting this, you can safely
       body: JSON.stringify({
         from: fromEmail,
         to: [invitation.email],
-        subject: `You're invited to join ${orgName} on My League Board`,
+        subject: isTeamInvite
+          ? `${inviterName} invited you to assistant coach ${teamName}`
+          : `You're invited to join ${orgName} on My League Board`,
         html,
         text,
       }),

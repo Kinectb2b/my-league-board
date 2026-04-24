@@ -24,13 +24,19 @@ export default function AcceptInvitePage() {
     setLoading(true)
     const { data, error } = await supabase
       .from('invitations')
-      .select('*, organizations(name), board_positions:board_position_id(id, title), teams:scope_id(name)')
+      .select('*, organizations(name), board_positions:board_position_id(id, title)')
       .eq('token', token)
       .is('accepted_at', null)
       .single()
-    if (error || !data) setError('This invitation is invalid or has already been used.')
-    else if (new Date(data.expires_at) < new Date()) setError('This invitation has expired.')
-    else setInvite(data)
+    if (error || !data) { setError('This invitation is invalid or has already been used.'); setLoading(false); return }
+    if (new Date(data.expires_at) < new Date()) { setError('This invitation has expired.'); setLoading(false); return }
+
+    // Fetch team name separately when team-scoped (scope_id has no FK to teams)
+    if (data.scope_type === 'team' && data.scope_id) {
+      const { data: team } = await supabase.from('teams').select('name').eq('id', data.scope_id).single()
+      data._teamName = team?.name || null
+    }
+    setInvite(data)
     setLoading(false)
   }
 
@@ -97,7 +103,7 @@ export default function AcceptInvitePage() {
   // Build a human-readable description of what they're being invited to
   const positionTitle = invite?.board_positions?.title
   const orgName = invite?.organizations?.name
-  const teamName = invite?.scope_type === 'team' ? invite?.teams?.name : null
+  const teamName = invite?.scope_type === 'team' ? invite?._teamName : null
   let inviteDescription = ''
   if (teamName && orgName) {
     inviteDescription = `You've been invited to join ${orgName} as an Assistant Coach for the ${teamName} team.`
