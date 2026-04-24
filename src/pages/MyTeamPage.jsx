@@ -4,6 +4,9 @@ import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { fetchCoachTeams } from '../lib/coachTeams'
+import { useToast } from '../components/Toast'
+import { useUserRoles } from '../hooks/useUserRoles'
+import { logActivity } from '../lib/activity'
 import { STATUS_COLORS, getTicketTypeConfig, PRIORITY_COLORS } from '../lib/ticketRouting'
 
 const BAG_STATUS_CONFIG = {
@@ -151,12 +154,20 @@ function TeamDetail({ team, showBackToList }) {
   const navigate = useNavigate()
   const { currentOrg } = useOrg()
   const { user } = useAuth()
+  const { roles } = useUserRoles(currentOrg?.id, user?.id)
 
   const [bag, setBag] = useState(null)
   const [bagItems, setBagItems] = useState([])
   const [tickets, setTickets] = useState([])
   const [headCoach, setHeadCoach] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+
+  // Can invite assistant coaches if: head coach of this team, admin, or has coach role for this team
+  const isAdmin = roles.some(r => r.role === 'admin')
+  const isHeadCoach = team.head_coach_id === user?.id
+  const hasCoachRole = roles.some(r => r.role === 'coach' && r.scope_type === 'team' && r.scope_id === team.id)
+  const canInviteCoach = isAdmin || isHeadCoach || hasCoachRole
 
   useEffect(() => {
     if (currentOrg && team) fetchTeamData()
@@ -264,7 +275,26 @@ function TeamDetail({ team, showBackToList }) {
         >
           View all my tickets
         </button>
+        {canInviteCoach && (
+          <button
+            className="btn-secondary"
+            onClick={() => setShowInviteModal(true)}
+            style={{ fontSize: '0.95rem', padding: '0.65rem 1.25rem' }}
+          >
+            + Invite assistant coach
+          </button>
+        )}
       </div>
+
+      {showInviteModal && (
+        <InviteCoachModal
+          orgId={currentOrg.id}
+          userId={user.id}
+          team={team}
+          onClose={() => setShowInviteModal(false)}
+          onSent={() => setShowInviteModal(false)}
+        />
+      )}
 
       {/* Team bag section */}
       <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', padding: '1.25rem', marginBottom: '1rem' }}>
@@ -379,5 +409,153 @@ function TeamDetail({ team, showBackToList }) {
         )}
       </div>
     </>
+  )
+}
+
+// ─── Invite Coach Modal ──────────────────────────────────────────
+
+function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
+  const { addToast } = useToast()
+  const [fullName, setFullName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [welcomeMessage, setWelcomeMessage] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState(null)
+  const [inviteLink, setInviteLink] = useState(null)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!fullName.trim()) { setError('Full name is required'); return }
+    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) { setError('Please enter a valid email'); return }
+    setSubmitting(true)
+    setError(null)
+
+    const { data, error: insertError } = await supabase
+      .from('invitations')
+      .insert({
+        organization_id: orgId,
+        email,
+        full_name: fullName || null,
+        phone: phone || null,
+        role: 'coach',
+        board_position_id: null,
+        intended_roles: ['coach'],
+        welcome_message: welcomeMessage || null,
+        invited_by: userId,
+        scope_type: 'team',
+        scope_id: team.id,
+      })
+      .select('id, token')
+      .single()
+
+    if (insertError) {
+      if (insertError.message.includes('duplicate') || insertError.message.includes('unique')) {
+        setError('An invitation for this email already exists in this league.')
+      } else {
+        setError(insertError.message)
+      }
+      setSubmitting(false)
+      return
+    }
+
+    const link = `${window.location.origin}/accept-invite?token=${data.token}`
+    setInviteLink(link)
+
+    logActivity(orgId, 'coach invitation sent', 'team', team.name, `Invited ${fullName || email} as assistant coach`)
+
+    // Send invitation email
+    const { data: emailResult, error: emailError } = await supabase.functions.invoke(
+      'send-invitation-email',
+      { body: { invitation_id: data.id } }
+    )
+
+    if (emailError || !emailResult?.success) {
+      console.error('Email send failed', emailError || emailResult)
+      addToast('Invitation created but email failed to send. Share the link manually.', 'warning')
+    } else {
+      addToast(`Invitation sent to ${email}`)
+    }
+
+    setSubmitting(false)
+  }
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(inviteLink)
+      addToast('Link copied to clipboard')
+    } catch { /* clipboard not available */ }
+  }
+
+  if (inviteLink) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--green-900)', marginBottom: '1rem' }}>Invitation created</h2>
+          <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+            Share this link with {fullName || email} to join as an assistant coach for {team.name}:
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+            <input
+              readOnly
+              value={inviteLink}
+              style={{ flex: 1, fontSize: '0.8rem', padding: '0.5rem', background: 'var(--gray-50)', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)' }}
+              onFocus={e => e.target.select()}
+            />
+            <button className="btn-primary" onClick={copyLink} style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>Copy</button>
+          </div>
+          <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+            This link expires in 7 days. The invitee will need to sign up or sign in to accept.
+          </p>
+          <button className="btn-secondary" onClick={onClose} style={{ width: '100%' }}>Done</button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--green-900)', marginBottom: '0.25rem' }}>
+          Invite assistant coach
+        </h2>
+        <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
+          for {team.name}{team.divisions?.name ? ` (${team.divisions.name})` : ''}
+        </p>
+
+        {error && <div className="form-error" style={{ marginBottom: '0.75rem' }}>{error}</div>}
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+            <label className="form-label">Full name *</label>
+            <input className="form-input" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Coach name" required />
+          </div>
+          <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+            <label className="form-label">Email *</label>
+            <input className="form-input" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="coach@example.com" required />
+          </div>
+          <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+            <label className="form-label">Phone <span className="text-muted">(optional)</span></label>
+            <input className="form-input" type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="555-123-4567" />
+          </div>
+          <div className="form-group" style={{ marginBottom: '1rem' }}>
+            <label className="form-label">Welcome message <span className="text-muted">(optional)</span></label>
+            <textarea
+              className="form-input"
+              rows={2}
+              value={welcomeMessage}
+              onChange={e => setWelcomeMessage(e.target.value)}
+              placeholder="A personal note for the new coach..."
+            />
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn-primary" disabled={submitting}>
+              {submitting ? 'Sending...' : 'Send invitation'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }

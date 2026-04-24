@@ -24,7 +24,7 @@ export default function AcceptInvitePage() {
     setLoading(true)
     const { data, error } = await supabase
       .from('invitations')
-      .select('*, organizations(name), board_positions:board_position_id(id, title)')
+      .select('*, organizations(name), board_positions:board_position_id(id, title), teams:scope_id(name)')
       .eq('token', token)
       .is('accepted_at', null)
       .single()
@@ -59,16 +59,19 @@ export default function AcceptInvitePage() {
       }).eq('id', invite.board_position_id)
     }
 
-    // 3. Grant user_roles from intended_roles
+    // 3. Grant user_roles from intended_roles, preserving scope from invitation
     const rolesToGrant = invite.intended_roles && invite.intended_roles.length > 0
       ? invite.intended_roles
       : [invite.role]
+    const scopeType = invite.scope_type || 'league'
+    const scopeId = invite.scope_id || null
     for (const role of rolesToGrant) {
       await supabase.from('user_roles').upsert({
         user_id: user.id,
         organization_id: invite.organization_id,
         role,
-        scope_type: 'league',
+        scope_type: scopeType,
+        scope_id: scopeId,
       }, { onConflict: 'user_id,organization_id,role,scope_type,scope_id' })
     }
 
@@ -94,8 +97,11 @@ export default function AcceptInvitePage() {
   // Build a human-readable description of what they're being invited to
   const positionTitle = invite?.board_positions?.title
   const orgName = invite?.organizations?.name
+  const teamName = invite?.scope_type === 'team' ? invite?.teams?.name : null
   let inviteDescription = ''
-  if (positionTitle && orgName) {
+  if (teamName && orgName) {
+    inviteDescription = `You've been invited to join ${orgName} as an Assistant Coach for the ${teamName} team.`
+  } else if (positionTitle && orgName) {
     inviteDescription = `You've been invited to join ${orgName} as ${positionTitle}.`
   } else if (orgName) {
     inviteDescription = `You've been invited to join ${orgName}.`

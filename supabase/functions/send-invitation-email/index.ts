@@ -38,11 +38,11 @@ Deno.serve(async (req: Request) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Fetch invitation with org name, inviter name, and board position
+    // Fetch invitation with org name, inviter name, board position, and team (if scoped)
     const { data: invitation, error: fetchErr } = await supabase
       .from("invitations")
       .select(
-        "*, organizations(name), inviter:invited_by(full_name), board_positions(title)"
+        "*, organizations(name), inviter:invited_by(full_name), board_positions(title), teams:scope_id(name)"
       )
       .eq("id", invitation_id)
       .single();
@@ -58,13 +58,16 @@ Deno.serve(async (req: Request) => {
     const inviterName = invitation.inviter?.full_name || "A league admin";
     const recipientName = invitation.full_name || "there";
     const boardPosition = invitation.board_positions?.title || null;
+    const teamName = invitation.scope_type === "team" ? invitation.teams?.name : null;
     const welcomeMessage = invitation.welcome_message || null;
     const inviteUrl = `${siteUrl}/accept-invite?token=${invitation.token}`;
 
-    // Build HTML email
-    const positionLine = boardPosition
-      ? ` as <strong>${boardPosition}</strong>`
-      : "";
+    // Build HTML email — team-scoped invitations get team-specific messaging
+    const positionLine = teamName
+      ? ` as an <strong>Assistant Coach</strong> for the <strong>${teamName}</strong> team`
+      : boardPosition
+        ? ` as <strong>${boardPosition}</strong>`
+        : "";
     const messagBlock = welcomeMessage
       ? `<div style="margin:20px 0;padding:16px;background:#f9fafb;border-left:3px solid #16a34a;border-radius:4px;">
            <p style="margin:0 0 4px;font-size:13px;color:#6b7280;">Message from ${inviterName}:</p>
@@ -104,7 +107,7 @@ Deno.serve(async (req: Request) => {
 
     const text = `Hi ${recipientName},
 
-${inviterName} has invited you to join ${orgName} on My League Board${boardPosition ? ` as ${boardPosition}` : ""}.
+${inviterName} has invited you to join ${orgName} on My League Board${teamName ? ` as an Assistant Coach for the ${teamName} team` : boardPosition ? ` as ${boardPosition}` : ""}.
 ${welcomeMessage ? `\nMessage from ${inviterName}:\n"${welcomeMessage}"\n` : ""}
 Accept your invitation: ${inviteUrl}
 
