@@ -451,7 +451,7 @@ function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
 
     if (insertError) {
       if (insertError.message.includes('duplicate') || insertError.message.includes('unique')) {
-        setError('An invitation for this email already exists in this league.')
+        setError('An invitation for this email already exists for this team.')
       } else {
         setError(insertError.message)
       }
