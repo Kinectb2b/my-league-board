@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [bagStats, setBagStats] = useState({ total: 0, building: 0, built: 0, pickedUp: 0, returned: 0 })
   const [pickedUpBags, setPickedUpBags] = useState([])
   const [lowStock, setLowStock] = useState([])
+  const [fieldAlerts, setFieldAlerts] = useState(0)
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState(null)
 
@@ -22,15 +23,18 @@ export default function Dashboard() {
   async function fetchStats() {
     setLoading(true)
     const orgId = currentOrg.id
-    const [items, teams, locations, stock, activityResult, templatesResult, seasonsResult] = await Promise.all([
+    const [items, teams, locations, stock, activityResult, templatesResult, seasonsResult, fieldsResult] = await Promise.all([
       supabase.from('equipment_items').select('status, item_condition, quantity').eq('organization_id', orgId),
       supabase.from('teams').select('id', { count: 'exact' }).eq('organization_id', orgId),
       supabase.from('storage_locations').select('id, is_supply_room').eq('organization_id', orgId),
       supabase.from('location_stock').select('quantity, target_quantity, equipment_items(name), storage_locations(name)').eq('organization_id', orgId),
       supabase.from('activity_log').select('*, profiles!actor_id(full_name)').eq('organization_id', orgId).order('created_at', { ascending: false }).limit(10),
       supabase.from('kit_templates').select('id', { count: 'exact' }).eq('organization_id', orgId),
-      supabase.from('seasons').select('id, name, is_active').eq('organization_id', orgId)
+      supabase.from('seasons').select('id, name, is_active').eq('organization_id', orgId),
+      supabase.from('fields').select('status').eq('organization_id', orgId)
     ])
+    const fieldsDown = (fieldsResult.data || []).filter(f => f.status === 'maintenance' || f.status === 'closed').length
+    setFieldAlerts(fieldsDown)
     const activeSeason = (seasonsResult.data || []).find(s => s.is_active)
     if (activeSeason) {
       const bagsResult = await supabase.from('team_bags').select('status, teams(name), picked_up_by_name, picked_up_at').eq('organization_id', orgId).eq('season_id', activeSeason.id)
@@ -152,6 +156,15 @@ export default function Dashboard() {
               </div>
             ))}
             {lowStock.length > 5 && <div style={{ fontSize: '0.8rem', color: '#9a3412', marginTop: '0.25rem' }}>+{lowStock.length - 5} more</div>}
+          </div>
+        )}
+
+        {fieldAlerts > 0 && (
+          <div style={{ marginTop: '1rem', background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 'var(--radius-lg)', padding: '1rem 1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '0.95rem', fontWeight: 600, color: '#92400e' }}>📍 {fieldAlerts} field{fieldAlerts !== 1 ? 's' : ''} not available</h3>
+              <Link to="/fields?status=not_available" style={{ color: '#92400e', fontSize: '0.8rem', fontWeight: 500 }}>View fields →</Link>
+            </div>
           </div>
         )}
 
