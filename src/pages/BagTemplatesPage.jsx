@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
+import { logActivity } from '../lib/activity'
 
 export default function BagTemplatesPage() {
-  const { currentOrg } = useOrg()
+  const { currentOrg, hasAnyRole, rolesLoading } = useOrg()
   const { addToast } = useToast()
+  const navigate = useNavigate()
   const [templates, setTemplates] = useState([])
   const [categories, setCategories] = useState([])
   const [sportTypes, setSportTypes] = useState([])
@@ -14,6 +17,16 @@ export default function BagTemplatesPage() {
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState(null)
+  const [filterSport, setFilterSport] = useState('')
+  const [filterDivision, setFilterDivision] = useState('')
+
+  // Permission guard — redirect if not admin or equipment_manager
+  useEffect(() => {
+    if (!rolesLoading && !hasAnyRole(['admin', 'equipment_manager'])) {
+      addToast('Not authorized', 'error')
+      navigate('/')
+    }
+  }, [rolesLoading])
 
   useEffect(() => { document.title = 'Bag Templates | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
@@ -37,10 +50,11 @@ export default function BagTemplatesPage() {
   }
 
   async function deleteTemplate(id, name) {
-    if (!confirm(`Delete template "${name}"? This cannot be undone.`)) return
+    if (!confirm(`Delete "${name}"? This won't affect teams that already have bags from this template.`)) return
     await supabase.from('kit_template_items').delete().eq('kit_template_id', id)
     await supabase.from('kit_templates').delete().eq('id', id)
     addToast('Template deleted')
+    logActivity(currentOrg.id, 'deleted', 'template', name)
     fetchAll()
   }
 
@@ -48,11 +62,11 @@ export default function BagTemplatesPage() {
     const { data: newTmpl, error } = await supabase.from('kit_templates')
       .insert({
         organization_id: currentOrg.id,
-        name: `Copy of ${tmpl.name}`,
+        name: `${tmpl.name} (copy)`,
         description: tmpl.description,
         sport_type_id: tmpl.sport_type_id,
         division_name: tmpl.division_name,
-        auto_assign_on_team_create: tmpl.auto_assign_on_team_create
+        auto_assign_on_team_create: false
       })
       .select().single()
     if (error || !newTmpl) { addToast('Failed to duplicate', 'error'); return }
@@ -68,26 +82,55 @@ export default function BagTemplatesPage() {
         }))
       )
     }
-    addToast(`Duplicated as "Copy of ${tmpl.name}"`)
+    addToast(`Duplicated as "${tmpl.name} (copy)"`)
+    logActivity(currentOrg.id, 'duplicated', 'template', tmpl.name)
     fetchAll()
   }
+
+  // Filter templates by sport and division
+  const filteredTemplates = templates.filter(t => {
+    if (filterSport && t.sport_type_id !== filterSport) return false
+    if (filterDivision && t.division_name !== filterDivision) return false
+    return true
+  })
+  const divisionOptions = filterSport
+    ? [...new Set(templates.filter(t => t.sport_type_id === filterSport).map(t => t.division_name).filter(Boolean))]
+    : [...new Set(templates.map(t => t.division_name).filter(Boolean))]
 
   return (
     <>
       <div className="page-header">
         <div>
           <h1>Bag templates</h1>
-          <p className="text-muted">{templates.length} template{templates.length !== 1 ? 's' : ''}</p>
+          <p className="text-muted">Define what equipment auto-assigns to new teams when they're created in a division.</p>
         </div>
         <button className="btn-primary" onClick={() => setShowAdd(true)}>+ New template</button>
       </div>
 
+      {!loading && templates.length > 0 && (
+        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          <select value={filterSport} onChange={e => { setFilterSport(e.target.value); setFilterDivision('') }} style={{ padding: '0.45rem 0.6rem', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius)', fontSize: '0.85rem', fontFamily: 'inherit' }}>
+            <option value="">All sports</option>
+            {sportTypes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          <select value={filterDivision} onChange={e => setFilterDivision(e.target.value)} style={{ padding: '0.45rem 0.6rem', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius)', fontSize: '0.85rem', fontFamily: 'inherit' }}>
+            <option value="">All divisions</option>
+            {divisionOptions.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+          {(filterSport || filterDivision) && (
+            <button className="btn-secondary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }} onClick={() => { setFilterSport(''); setFilterDivision('') }}>Clear filters</button>
+          )}
+          <span className="text-muted" style={{ alignSelf: 'center', fontSize: '0.85rem' }}>{filteredTemplates.length} template{filteredTemplates.length !== 1 ? 's' : ''}</span>
+        </div>
+      )}
+
       {loading ? (
         <div className="loading-state">Loading...</div>
       ) : templates.length === 0 ? (
-        <div className="empty-state">
-          <p>No bag templates yet. Create one to define what goes in a team bag.</p>
-          <button className="btn-primary" onClick={() => setShowAdd(true)}>+ New template</button>
+        <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+          <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No bag templates yet.</p>
+          <p className="text-muted" style={{ marginBottom: '1.25rem' }}>Templates define what equipment goes in a team bag. Create one to enable auto-assign on team creation.</p>
+          <button className="btn-primary" onClick={() => setShowAdd(true)}>+ Create your first template</button>
         </div>
       ) : (
         <div className="table-container">
@@ -95,33 +138,41 @@ export default function BagTemplatesPage() {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Division</th>
+                <th>Sport / Division</th>
                 <th>Items</th>
                 <th>Auto-Assign</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {templates.map(tmpl => (
-                <tr key={tmpl.id}>
-                  <td>
-                    <strong>{tmpl.name}</strong>
-                    {tmpl.description && <span className="item-detail">{tmpl.description}</span>}
-                  </td>
-                  <td className="text-muted">
-                    {tmpl.sport_types?.name || '—'}{tmpl.division_name ? ` / ${tmpl.division_name}` : ''}
-                  </td>
-                  <td>{tmpl.kit_template_items?.length || 0}</td>
-                  <td>{tmpl.auto_assign_on_team_create ? 'Yes' : '—'}</td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '0.25rem' }}>
-                      <button className="btn-icon-sm" onClick={() => setEditing(tmpl)} title="Edit">✎</button>
-                      <button className="btn-icon-sm" onClick={() => duplicateTemplate(tmpl)} title="Duplicate">⧉</button>
-                      <button className="btn-icon-sm btn-icon-danger" onClick={() => deleteTemplate(tmpl.id, tmpl.name)} title="Delete">✕</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filteredTemplates.map(tmpl => {
+                const itemCount = tmpl.kit_template_items?.length || 0
+                return (
+                  <tr key={tmpl.id} onClick={() => setEditing(tmpl)} style={{ cursor: 'pointer' }}>
+                    <td>
+                      <strong>{tmpl.name}</strong>
+                      {tmpl.description && <span className="item-detail">{tmpl.description}</span>}
+                    </td>
+                    <td className="text-muted">
+                      {tmpl.sport_types?.name || '—'}{tmpl.division_name ? ` / ${tmpl.division_name}` : ''}
+                    </td>
+                    <td>{itemCount} item{itemCount !== 1 ? 's' : ''}</td>
+                    <td>
+                      {tmpl.auto_assign_on_team_create
+                        ? <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '9999px', background: 'var(--green-100)', color: 'var(--green-700)' }}>Auto-assign ON</span>
+                        : <span style={{ fontSize: '0.75rem', fontWeight: 500, padding: '0.15rem 0.5rem', borderRadius: '9999px', background: 'var(--gray-100)', color: 'var(--gray-500)' }}>Manual only</span>
+                      }
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setEditing(tmpl) }} title="Edit">✎</button>
+                        <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); duplicateTemplate(tmpl) }} title="Duplicate">⧉</button>
+                        <button className="btn-icon-sm btn-icon-danger" onClick={e => { e.stopPropagation(); deleteTemplate(tmpl.id, tmpl.name) }} title="Delete">✕</button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -150,6 +201,7 @@ export default function BagTemplatesPage() {
 }
 
 function TemplateModal({ template, categories, sportTypes, divisions, equipmentItems, orgId, onDone, onClose }) {
+  const { addToast } = useToast()
   const [name, setName] = useState(template?.name || '')
   const [sportTypeId, setSportTypeId] = useState(template?.sport_type_id || '')
   const [divisionName, setDivisionName] = useState(template?.division_name || '')
@@ -199,30 +251,29 @@ function TemplateModal({ template, categories, sportTypes, divisions, equipmentI
       auto_assign_on_team_create: autoAssign
     }
 
+    const itemRows = items.map(i => ({
+      category_id: i.category_id,
+      equipment_item_id: i.equipment_item_id || null,
+      quantity: parseInt(i.quantity) || 1,
+      is_required: i.is_required,
+      notes: i.notes || null
+    }))
+
     if (template) {
-      await supabase.from('kit_templates').update(payload).eq('id', template.id)
+      const { error: updErr } = await supabase.from('kit_templates').update(payload).eq('id', template.id)
+      if (updErr) { setError(updErr.message); setSubmitting(false); return }
       await supabase.from('kit_template_items').delete().eq('kit_template_id', template.id)
-      await supabase.from('kit_template_items').insert(items.map(i => ({
-        kit_template_id: template.id,
-        category_id: i.category_id,
-        equipment_item_id: i.equipment_item_id || null,
-        quantity: parseInt(i.quantity) || 1,
-        is_required: i.is_required,
-        notes: i.notes || null
-      })))
+      await supabase.from('kit_template_items').insert(itemRows.map(i => ({ kit_template_id: template.id, ...i })))
+      addToast('Template saved')
+      logActivity(orgId, 'updated', 'template', name)
     } else {
       const { data, error: err } = await supabase.from('kit_templates')
         .insert({ organization_id: orgId, ...payload })
         .select().single()
       if (err) { setError(err.message); setSubmitting(false); return }
-      await supabase.from('kit_template_items').insert(items.map(i => ({
-        kit_template_id: data.id,
-        category_id: i.category_id,
-        equipment_item_id: i.equipment_item_id || null,
-        quantity: parseInt(i.quantity) || 1,
-        is_required: i.is_required,
-        notes: i.notes || null
-      })))
+      await supabase.from('kit_template_items').insert(itemRows.map(i => ({ kit_template_id: data.id, ...i })))
+      addToast('Template created')
+      logActivity(orgId, 'created', 'template', name)
     }
     setSubmitting(false)
     onDone()
@@ -250,10 +301,10 @@ function TemplateModal({ template, categories, sportTypes, divisions, equipmentI
             </div>
             <div className="form-group">
               <label>Division</label>
-              <select value={divisionName} onChange={e => setDivisionName(e.target.value)}>
-                <option value="">Any division</option>
-                {filteredDivisions.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
-              </select>
+              <input type="text" list="division-options" value={divisionName} onChange={e => setDivisionName(e.target.value)} placeholder="Any division" />
+              <datalist id="division-options">
+                {filteredDivisions.map(d => <option key={d.id} value={d.name} />)}
+              </datalist>
             </div>
           </div>
           <div className="form-row">
