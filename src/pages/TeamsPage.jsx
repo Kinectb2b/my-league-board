@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
 import { autoAssignBagForNewTeam } from '../lib/autoAssignBag'
+import * as Sentry from '@sentry/react'
 
 export default function TeamsPage() {
   const { currentOrg, hasAnyRole } = useOrg()
@@ -58,32 +59,45 @@ export default function TeamsPage() {
   }
 
   async function handleAutoAssign(newTeam) {
-    const result = await autoAssignBagForNewTeam(supabase, newTeam)
-    switch (result.status) {
-      case 'success':
-        addToast(`Bag assembly ticket opened for ${newTeam.name}`, 'success')
-        fetchAll()
-        break
-      case 'no_template':
-        break
-      case 'multiple_templates':
-        addToast('Multiple bag templates match this division — assign one manually via Team Bags.', 'warning')
-        break
-      case 'no_active_season':
-        addToast('No active season found — bag assembly deferred.', 'warning')
-        break
-      case 'error':
-        addToast('Team created, but bag auto-assignment failed. See console for details.', 'error')
-        console.error('Auto-assign bag error:', result.data?.error)
-        break
+    try {
+      const result = await autoAssignBagForNewTeam(supabase, newTeam)
+      switch (result.status) {
+        case 'success':
+          addToast(`Bag assembly ticket opened for ${newTeam.name}`, 'success')
+          fetchAll()
+          break
+        case 'no_template':
+          break
+        case 'multiple_templates':
+          addToast('Multiple bag templates match this division — assign one manually via Team Bags.', 'warning')
+          break
+        case 'no_active_season':
+          addToast('No active season found — bag assembly deferred.', 'warning')
+          break
+        case 'error':
+          addToast('Team created, but bag auto-assignment failed. See console for details.', 'error')
+          console.error('[autoAssignBag] failed:', result.data?.error)
+          Sentry.captureException(result.data?.error || new Error('autoAssignBag returned error status'), {
+            extra: { teamId: newTeam.id, teamName: newTeam.name, divisionId: newTeam.division_id, orgId: newTeam.organization_id }
+          })
+          break
+      }
+    } catch (err) {
+      console.error('[autoAssignBag] uncaught:', err)
+      Sentry.captureException(err, {
+        extra: { teamId: newTeam.id, teamName: newTeam.name, divisionId: newTeam.division_id, orgId: newTeam.organization_id }
+      })
     }
   }
 
   function getTeamBag(teamId) { return bags.find(b => b.team_id === teamId && b.season_id === filterSeason) }
 
   async function duplicateTeam(team) {
-    const { error } = await supabase.from('teams').insert({ organization_id: currentOrg.id, name: team.name + ' (copy)', division_id: team.division_id, color: team.color })
-    if (!error) { addToast('Team duplicated'); fetchAll() }
+    const { data: newTeam, error } = await supabase.from('teams').insert({ organization_id: currentOrg.id, name: team.name + ' (copy)', division_id: team.division_id, color: team.color }).select().single()
+    if (error) return
+    addToast('Team duplicated'); fetchAll()
+    logActivity(currentOrg.id, 'duplicated', 'team', newTeam.name)
+    await handleAutoAssign(newTeam)
   }
   async function deleteTeam(id, name) { if (!confirm(`Delete team "${name}"?`)) return; await supabase.from('teams').delete().eq('id', id); fetchAll() }
   async function deleteDivision(id, name) { const dt = teams.filter(t => t.division_id === id); if (dt.length > 0) { alert(`Cannot delete — has ${dt.length} team(s).`); return }; if (!confirm(`Delete "${name}"?`)) return; await supabase.from('divisions').delete().eq('id', id); fetchAll() }
