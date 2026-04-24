@@ -27,6 +27,8 @@ import TeamBagsPage from './pages/TeamBagsPage'
 import TeamBagDetailPage from './pages/TeamBagDetailPage'
 import MyTeamPage from './pages/MyTeamPage'
 import AppLayout from './components/AppLayout'
+import PWAUpdatePrompt from './components/PWAUpdatePrompt'
+import PWAInstallPrompt from './components/PWAInstallPrompt'
 
 function ProtectedRoute({ children }) {
   const { user, loading: authLoading } = useAuth()
@@ -83,6 +85,8 @@ export default function App() {
         <OrgProvider>
           <ToastProvider>
             <AppRoutes />
+            <PWAUpdatePrompt />
+            <PWAInstallPrompt />
           </ToastProvider>
         </OrgProvider>
       </AuthProvider>
