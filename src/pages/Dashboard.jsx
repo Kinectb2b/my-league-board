@@ -23,7 +23,7 @@ export default function Dashboard() {
   async function fetchStats() {
     setLoading(true)
     const orgId = currentOrg.id
-    const [items, teams, locations, stock, activityResult, templatesResult, seasonsResult, fieldsResult] = await Promise.all([
+    const [items, teams, locations, stock, activityResult, templatesResult, seasonsResult, fieldsResult, bagItemsResult] = await Promise.all([
       supabase.from('equipment_items').select('status, item_condition, quantity').eq('organization_id', orgId),
       supabase.from('teams').select('id', { count: 'exact' }).eq('organization_id', orgId),
       supabase.from('storage_locations').select('id, is_supply_room').eq('organization_id', orgId),
@@ -31,7 +31,8 @@ export default function Dashboard() {
       supabase.from('activity_log').select('*, profiles!actor_id(full_name)').eq('organization_id', orgId).order('created_at', { ascending: false }).limit(10),
       supabase.from('kit_templates').select('id', { count: 'exact' }).eq('organization_id', orgId),
       supabase.from('seasons').select('id, name, is_active').eq('organization_id', orgId),
-      supabase.from('fields').select('status').eq('organization_id', orgId)
+      supabase.from('fields').select('status').eq('organization_id', orgId),
+      supabase.from('team_bag_items').select('id, team_bags!inner(status, organization_id)', { count: 'exact', head: true }).eq('team_bags.organization_id', orgId).eq('team_bags.status', 'picked_up')
     ])
     const fieldsDown = (fieldsResult.data || []).filter(f => f.status === 'maintenance' || f.status === 'closed').length
     setFieldAlerts(fieldsDown)
@@ -50,7 +51,7 @@ export default function Dashboard() {
     const stockTotal = (stock.data || []).reduce((s, r) => s + r.quantity, 0)
     const itemTotal = d.reduce((s, i) => s + i.quantity, 0)
     const totalQty = stockTotal > 0 ? stockTotal : itemTotal
-    const assignedQty = d.filter(i => i.status === 'assigned').reduce((s, i) => s + i.quantity, 0)
+    const assignedQty = bagItemsResult.count || 0
     setActivities(activityResult.data || [])
     const locData = locations.data || []
     const hasEquipment = d.length > 0
@@ -64,7 +65,7 @@ export default function Dashboard() {
       totalItems: d.length,
       totalQty,
       assignedQty,
-      availableQty: totalQty - assignedQty,
+      availableQty: totalQty,
       needsRepair: d.filter(i => ['broken', 'damaged', 'needs_repair'].includes(i.item_condition)).reduce((s, i) => s + i.quantity, 0),
       teams: teams.count || 0,
       locations: locData.length
@@ -96,9 +97,9 @@ export default function Dashboard() {
               <div className="stat-number">{stats.availableQty}</div>
               <div className="stat-label">Available</div>
             </div>
-            <div className="stat-card stat-warning">
+            <div className="stat-card stat-warning" title="Items currently in team bags">
               <div className="stat-number">{stats.assignedQty}</div>
-              <div className="stat-label">Assigned to teams</div>
+              <div className="stat-label">Items in team bags</div>
             </div>
             <div className="stat-card stat-danger">
               <div className="stat-number">{stats.needsRepair}</div>
