@@ -91,23 +91,6 @@ export default function LocationsPage() {
     fetchAll()
   }
 
-  async function transferItem(fromLocId, toLocId, equipItemId, qty) {
-    const fromStock = stock.find(s => s.storage_location_id === fromLocId && s.equipment_item_id === equipItemId)
-    const toStock = stock.find(s => s.storage_location_id === toLocId && s.equipment_item_id === equipItemId)
-    if (!fromStock || fromStock.quantity < qty) return { error: { message: 'Not enough stock at source' } }
-    await supabase.from('location_stock').update({ quantity: fromStock.quantity - qty }).eq('id', fromStock.id)
-    if (toStock) {
-      await supabase.from('location_stock').update({ quantity: toStock.quantity + qty }).eq('id', toStock.id)
-    } else {
-      await supabase.from('location_stock').insert({
-        organization_id: currentOrg.id, storage_location_id: toLocId,
-        equipment_item_id: equipItemId, quantity: qty
-      })
-    }
-    fetchAll()
-    return { error: null }
-  }
-
   function switchLocation(loc) {
     if (hasChanges) {
       if (!confirm('You have unsaved changes. Switch anyway?')) return
@@ -345,90 +328,140 @@ export default function LocationsPage() {
           <AddStockModal locationId={activeLocation.id} locationName={activeLocation.name} availableItems={getItemsNotInLocation(activeLocation.id)} onAdd={addStockItem} onClose={() => { setShowAddStock(false); fetchAll() }} />
         )}
         {showTransfer && (
-          <TransferModal locations={locations} stock={stock} equipment={equipment} supplyRoom={supplyRoom} activeLocation={activeLocation} onTransfer={transferItem} onClose={() => { setShowTransfer(false); fetchAll() }} />
+          <TransferModal orgId={currentOrg.id} locations={locations} stock={stock} equipment={equipment} supplyRoom={supplyRoom} activeLocation={activeLocation} onClose={() => { setShowTransfer(false); fetchAll() }} onCompleted={fetchAll} />
         )}
       <style>{styles}</style>
     </>
   )
 }
 
-function TransferModal({ locations, stock, equipment, supplyRoom, activeLocation, onTransfer, onClose }) {
+function TransferModal({ orgId, locations, stock, equipment, supplyRoom, activeLocation, onClose, onCompleted }) {
   const { addToast } = useToast()
   const { currentOrg } = useOrg()
-  const [fromId, setFromId] = useState(supplyRoom?.id || '')
-  const [toId, setToId] = useState(activeLocation?.id && activeLocation.id !== supplyRoom?.id ? activeLocation.id : '')
-  const [itemId, setItemId] = useState('')
-  const [qty, setQty] = useState(1)
+  const blankRow = () => ({
+    key: crypto.randomUUID(),
+    fromId: supplyRoom?.id || '',
+    toId: activeLocation?.id && activeLocation.id !== supplyRoom?.id ? activeLocation.id : '',
+    itemId: '',
+    qty: 1
+  })
+  const [rows, setRows] = useState([blankRow()])
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState('')
 
-  const fromStock = stock.filter(s => s.storage_location_id === fromId)
-  const selectedStock = fromStock.find(s => s.equipment_item_id === itemId)
-  const maxQty = selectedStock?.quantity || 0
+  const uniqueStockedItems = [...new Map(stock.map(s => [s.equipment_item_id, s])).values()]
 
-  function handleItemSelect(eid) {
-    setItemId(eid)
+  function updateRow(key, patch) {
+    setRows(rs => rs.map(r => r.key === key ? { ...r, ...patch } : r))
+  }
+  function removeRow(key) {
+    setRows(rs => rs.length === 1 ? rs : rs.filter(r => r.key !== key))
+  }
+  function addRow() {
+    setRows(rs => [...rs, blankRow()])
+  }
+
+  function getMaxQty(row) {
+    const s = stock.find(s => s.storage_location_id === row.fromId && s.equipment_item_id === row.itemId)
+    return s?.quantity || 0
+  }
+
+  function handleItemSelect(key, eid) {
+    const patch = { itemId: eid }
     if (eid) {
       const item = equipment.find(eq => eq.id === eid)
       if (item?.storage_location_id) {
         const hasStockThere = stock.some(s => s.equipment_item_id === eid && s.storage_location_id === item.storage_location_id)
-        if (hasStockThere) setFromId(item.storage_location_id)
+        if (hasStockThere) patch.fromId = item.storage_location_id
       }
     }
+    updateRow(key, patch)
   }
 
   async function handleTransfer(e) {
     e.preventDefault()
-    if (!fromId || !toId || !itemId || qty < 1) { setError('Fill in all fields'); return }
-    if (fromId === toId) { setError('Source and destination must be different'); return }
-    if (qty > maxQty) { setError(`Only ${maxQty} available at source`); return }
-    setSubmitting(true); setError('')
-    const { error } = await onTransfer(fromId, toId, itemId, qty)
-    if (error) setError(friendlyError(error))
-    else { setSuccess(`Transferred ${qty} to ${locations.find(l => l.id === toId)?.name}`); setQty(1); setItemId(''); setTimeout(() => setSuccess(''), 3000); addToast('Transfer complete'); logActivity(currentOrg?.id, 'transferred', 'equipment', null, 'Transfer completed') }
-    setSubmitting(false)
-  }
+    for (const r of rows) {
+      if (!r.fromId || !r.toId || !r.itemId || r.qty < 1) { setError('Fill in all fields on every row'); return }
+      if (r.fromId === r.toId) { setError('Source and destination must differ on every row'); return }
+    }
+    const demand = new Map()
+    for (const r of rows) {
+      const k = `${r.fromId}|${r.itemId}`
+      demand.set(k, (demand.get(k) || 0) + r.qty)
+    }
+    for (const [k, total] of demand) {
+      const [fromId, itemId] = k.split('|')
+      const s = stock.find(s => s.storage_location_id === fromId && s.equipment_item_id === itemId)
+      if (!s || s.quantity < total) { setError(`Not enough stock at source for one of the items (need ${total})`); return }
+    }
 
-  const uniqueStockedItems = [...new Map(stock.map(s => [s.equipment_item_id, s])).values()]
+    setSubmitting(true); setError('')
+    const payload = rows.map(r => ({ item_id: r.itemId, from_id: r.fromId, to_id: r.toId, quantity: r.qty }))
+    const { error: rpcError } = await supabase.rpc('transfer_stock', { p_org_id: orgId, p_transfers: payload })
+    if (rpcError) {
+      setError(friendlyError(rpcError))
+      setSubmitting(false)
+      return
+    }
+    setSuccess(`Transferred ${rows.length} item${rows.length === 1 ? '' : 's'}`)
+    addToast('Transfers complete')
+    logActivity(currentOrg?.id, 'transferred', 'equipment', null, `Batch transfer (${rows.length} rows)`)
+    setRows([blankRow()])
+    setTimeout(() => setSuccess(''), 3000)
+    setSubmitting(false)
+    if (onCompleted) onCompleted()
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
         <div className="modal-header"><h2>Transfer equipment</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
         <form onSubmit={handleTransfer} className="modal-form">
-          <div className="form-group">
-            <label>Item *</label>
-            <select value={itemId} onChange={e => handleItemSelect(e.target.value)}>
-              <option value="">Select item...</option>
-              {uniqueStockedItems.map(s => <option key={s.equipment_item_id} value={s.equipment_item_id}>{s.equipment_items?.name}</option>)}
-            </select>
-          </div>
-          <div className="form-row">
-            <div className="form-group">
-              <label>From *</label>
-              <select value={fromId} onChange={e => { setFromId(e.target.value); setItemId('') }}>
-                <option value="">Select source...</option>
-                {locations.filter(l => !itemId || stock.some(s => s.equipment_item_id === itemId && s.storage_location_id === l.id)).map(l => <option key={l.id} value={l.id}>{l.name}{l.is_supply_room ? ' (Supply)' : ''}</option>)}
-              </select>
-            </div>
-            <div className="form-group">
-              <label>To *</label>
-              <select value={toId} onChange={e => setToId(e.target.value)}>
-                <option value="">Select destination...</option>
-                {locations.filter(l => l.id !== fromId).map(l => <option key={l.id} value={l.id}>{l.name}{l.is_supply_room ? ' (Supply)' : ''}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="form-group">
-            <label>Quantity * {maxQty > 0 && `(max: ${maxQty})`}</label>
-            <input type="number" min="1" max={maxQty} value={qty} onChange={e => setQty(parseInt(e.target.value) || 0)} />
-          </div>
+          {rows.map((r, idx) => {
+            const maxQty = getMaxQty(r)
+            return (
+              <div key={r.key} style={{ border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', padding: '0.75rem', marginBottom: '0.5rem', background: 'var(--gray-50)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <strong style={{ fontSize: '0.8rem', color: 'var(--gray-600)' }}>Transfer {idx + 1}</strong>
+                  {rows.length > 1 && <button type="button" className="btn-icon-sm" onClick={() => removeRow(r.key)} title="Remove">✕</button>}
+                </div>
+                <div className="form-group">
+                  <label>Item *</label>
+                  <select value={r.itemId} onChange={e => handleItemSelect(r.key, e.target.value)}>
+                    <option value="">Select item...</option>
+                    {uniqueStockedItems.map(s => <option key={s.equipment_item_id} value={s.equipment_item_id}>{s.equipment_items?.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>From *</label>
+                    <select value={r.fromId} onChange={e => updateRow(r.key, { fromId: e.target.value, itemId: '' })}>
+                      <option value="">Select source...</option>
+                      {locations.filter(l => !r.itemId || stock.some(s => s.equipment_item_id === r.itemId && s.storage_location_id === l.id)).map(l => <option key={l.id} value={l.id}>{l.name}{l.is_supply_room ? ' (Supply)' : ''}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>To *</label>
+                    <select value={r.toId} onChange={e => updateRow(r.key, { toId: e.target.value })}>
+                      <option value="">Select destination...</option>
+                      {locations.filter(l => l.id !== r.fromId).map(l => <option key={l.id} value={l.id}>{l.name}{l.is_supply_room ? ' (Supply)' : ''}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Quantity * {maxQty > 0 && `(max: ${maxQty})`}</label>
+                  <input type="number" min="1" max={maxQty || undefined} value={r.qty} onChange={e => updateRow(r.key, { qty: parseInt(e.target.value) || 0 })} />
+                </div>
+              </div>
+            )
+          })}
+          <button type="button" className="btn-secondary" onClick={addRow} style={{ marginBottom: '0.75rem' }}>+ Add another transfer</button>
           {error && <div className="form-error">{error}</div>}
           {success && <div className="form-success">{success}</div>}
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>Done</button>
-            <button type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Transferring...' : 'Transfer'}</button>
+            <button type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Transferring...' : `Transfer${rows.length > 1 ? ` ${rows.length} rows` : ''}`}</button>
           </div>
         </form>
       </div>
