@@ -8,12 +8,7 @@ import { useToast } from '../components/Toast'
 import { useUserRoles } from '../hooks/useUserRoles'
 import { logActivity } from '../lib/activity'
 import { STATUS_COLORS, getTicketTypeConfig, PRIORITY_COLORS } from '../lib/ticketRouting'
-
-const BAG_STATUS_CONFIG = {
-  building: { label: 'Building', color: '#f97316', bg: '#ffedd5' },
-  assigned: { label: 'Assigned', color: '#3b82f6', bg: '#dbeafe' },
-  returned: { label: 'Returned', color: '#16a34a', bg: '#d4edda' },
-}
+import { getBagStatusConfig } from '../lib/bagStatus'
 
 function timeAgo(date) {
   const s = Math.floor((Date.now() - new Date(date)) / 1000)
@@ -119,7 +114,7 @@ function TeamPicker({ teams }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
         {teams.map(team => {
           const bagStatus = bagStatuses[team.id]
-          const sc = bagStatus ? BAG_STATUS_CONFIG[bagStatus] : null
+          const sc = bagStatus ? getBagStatusConfig(bagStatus) : null
           return (
             <div
               key={team.id}
@@ -156,14 +151,18 @@ function TeamDetail({ team, showBackToList }) {
   const navigate = useNavigate()
   const { currentOrg } = useOrg()
   const { user } = useAuth()
+  const { addToast } = useToast()
   const { roles } = useUserRoles(currentOrg?.id, user?.id)
 
   const [bag, setBag] = useState(null)
+  const [bagSummary, setBagSummary] = useState(null)
   const [bagItems, setBagItems] = useState([])
   const [tickets, setTickets] = useState([])
   const [headCoach, setHeadCoach] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showInviteModal, setShowInviteModal] = useState(false)
+  const [missingFor, setMissingFor] = useState(null)
+  const [missingNote, setMissingNote] = useState('')
 
   // Can invite assistant coaches if: head coach of this team, admin, or has coach role for this team
   const isAdmin = roles.some(r => r.role === 'admin')
@@ -186,11 +185,10 @@ function TeamDetail({ team, showBackToList }) {
     setLoading(true)
     const orgId = currentOrg.id
 
-    // Fetch bag, tickets, and head coach in parallel
     const [bagRes, ticketRes, teamFullRes] = await Promise.all([
       supabase
         .from('team_bags')
-        .select('id, status, bag_tag, seasons(name)')
+        .select('id, status, bag_tag, picked_up_at, picked_up_by_name, seasons(name)')
         .eq('organization_id', orgId)
         .eq('team_id', team.id)
         .order('created_at', { ascending: false })
@@ -218,27 +216,74 @@ function TeamDetail({ team, showBackToList }) {
 
     if (bagRes.data) {
       setBag(bagRes.data)
-      // Fetch bag items
-      const { data: items } = await supabase
-        .from('team_bag_items')
-        // FK disambiguator on equipment_items: team_bag_items has TWO FKs to
-        // equipment_items (equipment_item_id + replacement_item_id), so the
-        // shorthand `equipment_items(...)` raises PostgREST 300 PGRST201.
-        .select('*, equipment_categories(name), equipment_items!team_bag_items_equipment_item_id_fkey(name, brand, item_condition)')
-        .eq('team_bag_id', bagRes.data.id)
-        .order('is_required', { ascending: false })
-      setBagItems(items || [])
+      const [itemsRes, summaryRes] = await Promise.all([
+        supabase
+          .from('team_bag_items')
+          // FK disambiguator on equipment_items: team_bag_items has TWO FKs to
+          // equipment_items (equipment_item_id + replacement_item_id), so the
+          // shorthand `equipment_items(...)` raises PostgREST 300 PGRST201.
+          .select('*, equipment_categories(name), equipment_items!team_bag_items_equipment_item_id_fkey(name, brand, size, item_condition)')
+          .eq('team_bag_id', bagRes.data.id)
+          .order('is_required', { ascending: false }),
+        supabase
+          .from('bag_summary')
+          .select('item_count, items_missing')
+          .eq('bag_id', bagRes.data.id)
+          .maybeSingle()
+      ])
+      setBagItems(itemsRes.data || [])
+      setBagSummary(summaryRes.data || null)
     } else {
       setBag(null)
       setBagItems([])
+      setBagSummary(null)
     }
 
     setLoading(false)
   }
 
+  async function togglePacked(itemId, current) {
+    const next = !current
+    setBagItems(items => items.map(i => i.id === itemId ? { ...i, is_packed: next } : i))
+    setBagSummary(s => s ? { ...s, items_missing: s.items_missing + (next ? -1 : 1) } : s)
+    const { error } = await supabase.from('team_bag_items').update({ is_packed: next }).eq('id', itemId)
+    if (error) {
+      setBagItems(items => items.map(i => i.id === itemId ? { ...i, is_packed: current } : i))
+      setBagSummary(s => s ? { ...s, items_missing: s.items_missing + (next ? 1 : -1) } : s)
+      addToast('Could not update — try again', 'error')
+    }
+  }
+
+  function openMissing(item) {
+    setMissingFor(item.id)
+    setMissingNote(item.notes || '')
+  }
+
+  function cancelMissing() {
+    setMissingFor(null)
+    setMissingNote('')
+  }
+
+  async function saveMissing(itemId) {
+    const trimmed = missingNote.trim()
+    const note = trimmed || null
+    const prev = bagItems.find(i => i.id === itemId)
+    setBagItems(items => items.map(i => i.id === itemId ? { ...i, is_packed: false, notes: note } : i))
+    setMissingFor(null)
+    setMissingNote('')
+    const { error } = await supabase.from('team_bag_items').update({ is_packed: false, notes: note }).eq('id', itemId)
+    if (error) {
+      setBagItems(items => items.map(i => i.id === itemId ? prev : i))
+      addToast('Could not save — try again', 'error')
+    } else {
+      logActivity(currentOrg?.id, 'marked missing', 'team_bag_item', prev?.equipment_categories?.name || 'item', trimmed || null)
+      addToast('Marked missing')
+    }
+  }
+
   if (loading) return <div className="loading-state" style={{ padding: '3rem' }}>Loading...</div>
 
-  const sc = bag ? (BAG_STATUS_CONFIG[bag.status] || BAG_STATUS_CONFIG.building) : null
+  const sc = bag ? getBagStatusConfig(bag.status) : null
 
   return (
     <>
@@ -255,10 +300,28 @@ function TeamDetail({ team, showBackToList }) {
           {team.divisions?.name || 'No division'}
           {team.divisions?.sport_types?.name ? ` - ${team.divisions.sport_types.name}` : ''}
         </p>
-        {sc && (
-          <span className="badge" style={{ backgroundColor: sc.bg, color: sc.color, fontSize: '0.8rem', marginTop: '0.5rem', display: 'inline-block' }}>
-            Bag: {sc.label}
-          </span>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+          {sc && (
+            <span className="badge" style={{ backgroundColor: sc.bg, color: sc.color, fontSize: '0.8rem' }}>
+              Bag: {sc.label}
+            </span>
+          )}
+          {bag?.bag_tag && (
+            <span className="badge" style={{ backgroundColor: 'var(--gray-100)', color: 'var(--gray-700)', fontSize: '0.8rem' }}>
+              Tag #{bag.bag_tag}
+            </span>
+          )}
+          {bagSummary && (
+            <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+              {bagSummary.item_count - bagSummary.items_missing} of {bagSummary.item_count} packed
+            </span>
+          )}
+        </div>
+        {bag?.status === 'picked_up' && bag.picked_up_by_name && (
+          <p className="text-muted" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>
+            Picked up by {bag.picked_up_by_name}
+            {bag.picked_up_at ? ` on ${new Date(bag.picked_up_at).toLocaleDateString()}` : ''}
+          </p>
         )}
         {headCoach && headCoach.full_name && (
           <p className="text-muted" style={{ fontSize: '0.85rem', marginTop: '0.35rem' }}>
@@ -331,14 +394,12 @@ function TeamDetail({ team, showBackToList }) {
         {bag && bagItems.length > 0 && (
           <div>
             {bagItems.map(item => {
-              const isPacked = item.is_packed
               const itemStatus = item.status
               const isLost = itemStatus === 'lost'
               const isSwapped = itemStatus === 'swapped_out'
-
-              let icon = isPacked ? '✅' : '⬜'
-              if (isLost) icon = '❌'
-              if (isSwapped) icon = '⚠️'
+              const interactive = !isLost && !isSwapped
+              const showActions = interactive && bag.status === 'picked_up'
+              const isEditingMissing = missingFor === item.id
 
               return (
                 <div key={item.id} style={{
@@ -346,32 +407,69 @@ function TeamDetail({ team, showBackToList }) {
                   padding: '0.65rem 0', borderBottom: '1px solid var(--gray-100)',
                   opacity: isLost ? 0.5 : 1
                 }}>
-                  <span style={{ fontSize: '0.9rem', flexShrink: 0, marginTop: '0.1rem' }}>{icon}</span>
+                  <div style={{ flexShrink: 0, marginTop: '0.15rem', width: 18, display: 'flex', justifyContent: 'center' }}>
+                    {interactive ? (
+                      <input
+                        type="checkbox"
+                        checked={!!item.is_packed}
+                        onChange={() => togglePacked(item.id, item.is_packed)}
+                        title={item.is_packed ? 'Mark unpacked' : 'Mark packed'}
+                      />
+                    ) : (
+                      <span style={{ fontSize: '0.9rem' }}>{isLost ? '❌' : '⚠️'}</span>
+                    )}
+                  </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.9rem', fontWeight: 500 }}>
                       {item.equipment_categories?.name || 'Unknown'}
+                      {item.equipment_items?.size && <span style={{ fontSize: '0.8rem', color: 'var(--gray-500)', marginLeft: '0.4rem' }}>· {item.equipment_items.size}</span>}
                       {isSwapped && <span style={{ fontSize: '0.75rem', color: 'var(--orange-500)', marginLeft: '0.4rem' }}>(Swapped)</span>}
                       {isLost && <span style={{ fontSize: '0.75rem', color: 'var(--red-500)', marginLeft: '0.4rem' }}>(Lost)</span>}
                     </div>
-                    {isPacked && item.equipment_items && (
+                    {item.equipment_items && (
                       <div style={{ fontSize: '0.8rem', color: 'var(--gray-600)', marginTop: '0.1rem' }}>
                         {item.equipment_items.name}
                         {item.equipment_items.brand ? `, ${item.equipment_items.brand}` : ''}
                         {item.equipment_items.item_condition ? ` — ${item.equipment_items.item_condition}` : ''}
                       </div>
                     )}
-                    {item.notes && (
+                    {item.notes && !isEditingMissing && (
                       <div style={{ fontSize: '0.75rem', color: 'var(--gray-400)', marginTop: '0.1rem', fontStyle: 'italic' }}>{item.notes}</div>
                     )}
+                    {isEditingMissing && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <textarea
+                          autoFocus
+                          rows={2}
+                          value={missingNote}
+                          onChange={e => setMissingNote(e.target.value)}
+                          placeholder="What's going on? (e.g. lost during practice, never received)"
+                          style={{ width: '100%', fontSize: '0.85rem', padding: '0.4rem', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)' }}
+                        />
+                        <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem' }}>
+                          <button type="button" className="btn-small btn-primary" style={{ fontSize: '0.75rem' }} onClick={() => saveMissing(item.id)}>Save</button>
+                          <button type="button" className="btn-small" style={{ fontSize: '0.75rem', background: 'white', color: 'var(--gray-600)', border: '1px solid var(--gray-200)' }} onClick={cancelMissing}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  {isPacked && !isLost && !isSwapped && bag.status === 'assigned' && (
-                    <button
-                      className="btn-small"
-                      style={{ flexShrink: 0, fontSize: '0.75rem', background: 'white', color: 'var(--gray-600)', border: '1px solid var(--gray-200)' }}
-                      onClick={() => navigate(`/tickets/new?team_bag_item_id=${item.id}&team_id=${team.id}`)}
-                    >
-                      Report issue
-                    </button>
+                  {showActions && !isEditingMissing && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flexShrink: 0 }}>
+                      <button
+                        className="btn-small"
+                        style={{ fontSize: '0.7rem', background: 'white', color: 'var(--gray-600)', border: '1px solid var(--gray-200)' }}
+                        onClick={() => openMissing(item)}
+                      >
+                        Mark missing
+                      </button>
+                      <button
+                        className="btn-small"
+                        style={{ fontSize: '0.7rem', background: 'white', color: 'var(--gray-600)', border: '1px solid var(--gray-200)' }}
+                        onClick={() => navigate(`/tickets/new?team_bag_item_id=${item.id}&team_id=${team.id}`)}
+                      >
+                        Report issue
+                      </button>
+                    </div>
                   )}
                 </div>
               )

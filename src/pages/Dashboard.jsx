@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
 import { Link } from 'react-router-dom'
+import { BAG_STATUS_CONFIG } from '../lib/bagStatus'
 
 export default function Dashboard() {
   const { profile } = useAuth()
@@ -10,7 +11,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ totalItems: 0, totalQty: 0, assignedQty: 0, availableQty: 0, needsRepair: 0, teams: 0, locations: 0 })
   const [activities, setActivities] = useState([])
   const [checklist, setChecklist] = useState(null)
-  const [bagStats, setBagStats] = useState({ total: 0, building: 0, built: 0, pickedUp: 0, returned: 0 })
+  const [bagStats, setBagStats] = useState({ total: 0, building: 0, built: 0, pickedUp: 0, returned: 0, incomplete: 0 })
   const [pickedUpBags, setPickedUpBags] = useState([])
   const [lowStock, setLowStock] = useState([])
   const [fieldAlerts, setFieldAlerts] = useState(0)
@@ -40,10 +41,17 @@ export default function Dashboard() {
     if (activeSeason) {
       const bagsResult = await supabase.from('team_bags').select('status, teams(name), picked_up_by_name, picked_up_at').eq('organization_id', orgId).eq('season_id', activeSeason.id)
       const bags = bagsResult.data || []
-      setBagStats({ total: bags.length, building: bags.filter(b => b.status === 'building').length, built: bags.filter(b => b.status === 'built').length, pickedUp: bags.filter(b => b.status === 'picked_up').length, returned: bags.filter(b => b.status === 'returned').length })
+      setBagStats({
+        total: bags.length,
+        building: bags.filter(b => b.status === 'building').length,
+        built: bags.filter(b => b.status === 'built').length,
+        pickedUp: bags.filter(b => b.status === 'picked_up').length,
+        returned: bags.filter(b => b.status === 'returned').length,
+        incomplete: bags.filter(b => b.status === 'incomplete').length,
+      })
       setPickedUpBags(bags.filter(b => b.status === 'picked_up'))
     } else {
-      setBagStats({ total: 0, building: 0, built: 0, pickedUp: 0, returned: 0 })
+      setBagStats({ total: 0, building: 0, built: 0, pickedUp: 0, returned: 0, incomplete: 0 })
       setPickedUpBags([])
     }
     setLowStock((stock.data || []).filter(s => s.target_quantity && s.quantity < s.target_quantity))
@@ -124,6 +132,7 @@ export default function Dashboard() {
               {bagStats.built > 0 && <div style={{ background: '#dbeafe', border: '1px solid #bfdbfe', borderRadius: 'var(--radius)', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ fontSize: '1.2rem', fontWeight: 700, color: '#3b82f6' }}>{bagStats.built}</span><span style={{ fontSize: '0.8rem', color: '#1e40af' }}>Ready</span></div>}
               {bagStats.pickedUp > 0 && <div style={{ background: '#ede9fe', border: '1px solid #ddd6fe', borderRadius: 'var(--radius)', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ fontSize: '1.2rem', fontWeight: 700, color: '#8b5cf6' }}>{bagStats.pickedUp}</span><span style={{ fontSize: '0.8rem', color: '#6d28d9' }}>Picked up</span></div>}
               {bagStats.returned > 0 && <div style={{ background: '#d4edda', border: '1px solid #b7dfc3', borderRadius: 'var(--radius)', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ fontSize: '1.2rem', fontWeight: 700, color: '#16a34a' }}>{bagStats.returned}</span><span style={{ fontSize: '0.8rem', color: '#15803d' }}>Returned</span></div>}
+              {bagStats.incomplete > 0 && <div style={{ background: BAG_STATUS_CONFIG.incomplete.bg, border: '1px solid #fcd34d', borderRadius: 'var(--radius)', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ fontSize: '1.2rem', fontWeight: 700, color: BAG_STATUS_CONFIG.incomplete.color }}>{bagStats.incomplete}</span><span style={{ fontSize: '0.8rem', color: '#92400e' }}>Incomplete</span></div>}
               <div style={{ background: 'var(--gray-50)', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--gray-700)' }}>{bagStats.total}</span><span style={{ fontSize: '0.8rem', color: 'var(--gray-500)' }}>Total bags</span></div>
             </div>
           </div>

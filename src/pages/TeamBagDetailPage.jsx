@@ -4,12 +4,7 @@ import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
-
-const STATUS_CONFIG = {
-  building: { label: 'Building', color: '#f97316', bg: '#ffedd5' },
-  assigned: { label: 'Assigned', color: '#3b82f6', bg: '#dbeafe' },
-  returned: { label: 'Returned', color: '#16a34a', bg: '#d4edda' },
-}
+import { getBagStatusConfig } from '../lib/bagStatus'
 
 export default function TeamBagDetailPage() {
   const { id } = useParams()
@@ -70,7 +65,7 @@ export default function TeamBagDetailPage() {
   const packedCount = bagItems.filter(i => i.is_packed).length
   const totalCount = bagItems.length
   const allRequiredPacked = requiredItems.every(i => i.is_packed)
-  const sc = STATUS_CONFIG[bag.status] || STATUS_CONFIG.building
+  const sc = getBagStatusConfig(bag.status)
 
   function getStockForItem(itemId) {
     return stockData
@@ -141,15 +136,24 @@ export default function TeamBagDetailPage() {
     fetchAll()
   }
 
-  async function markAssigned(pickedUpByName) {
+  async function markBuilt() {
     await supabase.from('team_bags').update({
-      status: 'assigned',
+      status: 'built',
       built_by: user?.id,
       built_at: new Date().toISOString(),
-      picked_up_by_name: pickedUpByName || null,
-      picked_up_at: pickedUpByName ? new Date().toISOString() : null
     }).eq('id', bag.id)
-    addToast('Bag marked as assigned')
+    addToast('Bag marked as ready for pickup')
+    fetchAll()
+  }
+
+  async function markPickedUp(pickedUpByName) {
+    if (!pickedUpByName?.trim()) { addToast('Name is required', 'error'); return }
+    await supabase.from('team_bags').update({
+      status: 'picked_up',
+      picked_up_by_name: pickedUpByName.trim(),
+      picked_up_at: new Date().toISOString(),
+    }).eq('id', bag.id)
+    addToast('Pickup recorded')
     setShowPickup(false)
     fetchAll()
   }
@@ -272,12 +276,18 @@ export default function TeamBagDetailPage() {
       {bag.status === 'building' && allRequiredPacked && (
         <div style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius)', background: 'var(--green-50)', border: '1px solid var(--green-400)', color: 'var(--green-800)', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <span>All required items packed!</span>
-          <button className="btn-primary" onClick={() => setShowPickup(true)} style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}>Mark as assembled</button>
+          <button className="btn-primary" onClick={markBuilt} style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}>Mark as ready for pickup</button>
         </div>
       )}
-      {bag.status === 'assigned' && (
+      {bag.status === 'built' && (
         <div style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius)', background: 'var(--blue-100)', border: '1px solid #93bbfd', color: '#1e40af', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <span>Bag is assigned and in use.</span>
+          <span>Bag is ready for pickup.</span>
+          <button className="btn-primary" onClick={() => setShowPickup(true)} style={{ fontSize: '0.85rem', padding: '0.4rem 1rem' }}>Record pickup</button>
+        </div>
+      )}
+      {bag.status === 'picked_up' && (
+        <div style={{ padding: '0.75rem 1rem', borderRadius: 'var(--radius)', background: 'var(--blue-100)', border: '1px solid #93bbfd', color: '#1e40af', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <span>Bag is out with the team.</span>
           <button className="btn-small" onClick={() => setShowReturn(true)}>Start return inspection</button>
         </div>
       )}
@@ -348,7 +358,7 @@ export default function TeamBagDetailPage() {
       {/* Mark assembled / pickup modal */}
       {showPickup && (
         <PickupModal
-          onConfirm={markAssigned}
+          onConfirm={markPickedUp}
           onClose={() => setShowPickup(false)}
         />
       )}
@@ -369,7 +379,7 @@ export default function TeamBagDetailPage() {
 function BagItemRow({ bagItem, suggestion, bagStatus, onPack, onUnpack, onPickDifferent, onReport }) {
   const isPacked = bagItem.is_packed
   const isBuilding = bagStatus === 'building'
-  const isAssigned = bagStatus === 'assigned'
+  const isPickedUp = bagStatus === 'picked_up'
   const itemStatus = bagItem.status
 
   return (
@@ -426,7 +436,7 @@ function BagItemRow({ bagItem, suggestion, bagStatus, onPack, onUnpack, onPickDi
         {isBuilding && isPacked && (
           <button className="btn-small bag-btn-alt" onClick={() => onUnpack(bagItem.id)}>Unpack</button>
         )}
-        {isAssigned && isPacked && !itemStatus && (
+        {isPickedUp && isPacked && !itemStatus && (
           <button className="btn-small bag-btn-alt" onClick={onReport}>Report</button>
         )}
       </div>
@@ -528,22 +538,34 @@ function ReportItemModal({ bagItem, onReport, onClose }) {
 
 function PickupModal({ onConfirm, onClose }) {
   const [name, setName] = useState('')
+  const trimmed = name.trim()
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>Mark bag as assembled</h2>
+          <h2>Record pickup</h2>
           <button className="btn-icon" onClick={onClose}>✕</button>
         </div>
         <div className="modal-form">
           <div className="form-group">
-            <label>Picked up by (optional — can set later)</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Coach name" />
+            <label>Picked up by *</label>
+            <input
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder="Coach name"
+              autoFocus
+              required
+            />
           </div>
           <div className="modal-actions">
             <button className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn-primary" onClick={() => onConfirm(name.trim())}>Confirm</button>
+            <button
+              className="btn-primary"
+              onClick={() => onConfirm(trimmed)}
+              disabled={!trimmed}
+            >Confirm</button>
           </div>
         </div>
       </div>

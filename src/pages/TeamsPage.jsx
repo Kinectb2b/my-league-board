@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
 import { autoAssignBagForNewTeam } from '../lib/autoAssignBag'
+import { BAG_STATUS_CONFIG, getBagStatusConfig } from '../lib/bagStatus'
 import * as Sentry from '@sentry/react'
 
 export default function TeamsPage() {
@@ -191,12 +192,7 @@ export default function TeamsPage() {
   const filteredDivisions = divisions.filter(d => !filterSeason || d.season_id === filterSeason)
   const filteredTeams = teams.filter(t => { const div = divisions.find(d => d.id === t.division_id); const matchesSearch = !teamSearch || t.name.toLowerCase().includes(teamSearch.toLowerCase()); return div && (!filterSeason || div.season_id === filterSeason) && matchesSearch })
 
-  const statusConfig = {
-    building: { label: 'Building', color: '#f97316', bg: '#ffedd5' },
-    built: { label: 'Ready', color: '#3b82f6', bg: '#dbeafe' },
-    picked_up: { label: 'Picked up', color: '#8b5cf6', bg: '#ede9fe' },
-    returned: { label: 'Returned', color: '#16a34a', bg: '#d4edda' }
-  }
+  const statusConfig = BAG_STATUS_CONFIG
 
   return (
     <>
@@ -266,7 +262,7 @@ export default function TeamsPage() {
                           <div className="team-list">
                             {filteredTeams.filter(t => t.division_id === div.id).map(team => {
                               const bag = getTeamBag(team.id)
-                              const sc = bag ? statusConfig[bag.status] : null
+                              const sc = bag ? getBagStatusConfig(bag.status) : null
                               const packed = bag?.team_bag_items?.filter(i => i.is_packed).length || 0
                               const total = bag?.team_bag_items?.length || 0
                               return (
@@ -474,7 +470,7 @@ function GearDetailModal({ team, bag, statusConfig, canEdit, onToggle, onMarkBui
 
   if (!bag) { onClose(); return null }
 
-  const sc = statusConfig[bag.status]
+  const sc = getBagStatusConfig(bag.status)
   const items = bag.team_bag_items || []
   const required = items.filter(i => i.is_required)
   const optional = items.filter(i => !i.is_required)

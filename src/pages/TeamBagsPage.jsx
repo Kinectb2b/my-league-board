@@ -3,12 +3,7 @@ import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { useNavigate } from 'react-router-dom'
-
-const STATUS_CONFIG = {
-  building: { label: 'Building', color: '#f97316', bg: '#ffedd5' },
-  assigned: { label: 'Assigned', color: '#3b82f6', bg: '#dbeafe' },
-  returned: { label: 'Returned', color: '#16a34a', bg: '#d4edda' },
-}
+import { BAG_FILTER_OPTIONS, getBagStatusConfig } from '../lib/bagStatus'
 
 export default function TeamBagsPage() {
   const { currentOrg } = useOrg()
@@ -116,10 +111,9 @@ export default function TeamBagsPage() {
           {seasons.map(s => <option key={s.id} value={s.id}>{s.name}{s.is_active ? ' (active)' : ''}</option>)}
         </select>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="">All statuses</option>
-          <option value="building">Building</option>
-          <option value="assigned">Assigned</option>
-          <option value="returned">Returned</option>
+          {BAG_FILTER_OPTIONS.map(opt => (
+            <option key={opt.value || 'all'} value={opt.value}>{opt.label}</option>
+          ))}
         </select>
         <span className="text-muted">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
       </div>
@@ -149,7 +143,7 @@ export default function TeamBagsPage() {
             </thead>
             <tbody>
               {filtered.map(bag => {
-                const sc = STATUS_CONFIG[bag.status] || STATUS_CONFIG.building
+                const sc = getBagStatusConfig(bag.status)
                 const total = bag.team_bag_items?.length || 0
                 const packed = bag.team_bag_items?.filter(i => i.is_packed).length || 0
                 return (
