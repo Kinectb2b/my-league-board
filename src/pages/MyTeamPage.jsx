@@ -37,7 +37,8 @@ export default function MyTeamPage() {
 
   useEffect(() => {
     if (currentOrg && user) loadTeams()
-  }, [currentOrg, user])
+    // Primitive deps prevent re-fetch when context value object identity churns.
+  }, [currentOrg?.id, user?.id])
 
   async function loadTeams() {
     setLoading(true)
@@ -104,7 +105,8 @@ function TeamPicker({ teams }) {
         }
         setBagStatuses(map)
       })
-  }, [currentOrg, teams])
+    // Primitive currentOrg.id avoids re-fetch on context-value churn; teams ref is stable post-loadTeams.
+  }, [currentOrg?.id, teams])
 
   return (
     <>
@@ -171,11 +173,14 @@ function TeamDetail({ team, showBackToList }) {
 
   useEffect(() => {
     if (currentOrg && team) fetchTeamData()
-  }, [currentOrg, team])
+    // Primitive deps: parent re-creates `team` object identity each render
+    // (teams.find), so depending on the object would refetch every render and
+    // produce a request storm against /rest/v1/team_bag_items.
+  }, [currentOrg?.id, team?.id])
 
   useEffect(() => {
     if (team) document.title = `${team.name} | My Team | My League Board`
-  }, [team])
+  }, [team?.name])
 
   async function fetchTeamData() {
     setLoading(true)
@@ -216,7 +221,10 @@ function TeamDetail({ team, showBackToList }) {
       // Fetch bag items
       const { data: items } = await supabase
         .from('team_bag_items')
-        .select('*, equipment_categories(name), equipment_items(name, brand, item_condition)')
+        // FK disambiguator on equipment_items: team_bag_items has TWO FKs to
+        // equipment_items (equipment_item_id + replacement_item_id), so the
+        // shorthand `equipment_items(...)` raises PostgREST 300 PGRST201.
+        .select('*, equipment_categories(name), equipment_items!team_bag_items_equipment_item_id_fkey(name, brand, item_condition)')
         .eq('team_bag_id', bagRes.data.id)
         .order('is_required', { ascending: false })
       setBagItems(items || [])

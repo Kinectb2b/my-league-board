@@ -42,7 +42,9 @@ export default function TeamBagDetailPage() {
         .select('*, teams(name, divisions(name, sport_types(name))), kit_templates(name), seasons(name), profiles!built_by(full_name)')
         .eq('id', id).single(),
       supabase.from('team_bag_items')
-        .select('*, equipment_categories(name), equipment_items(name, brand, item_condition)')
+        // FK disambiguator: team_bag_items has TWO FKs to equipment_items
+        // (equipment_item_id + replacement_item_id); shorthand raises PGRST201.
+        .select('*, equipment_categories(name), equipment_items!team_bag_items_equipment_item_id_fkey(name, brand, item_condition)')
         .eq('team_bag_id', id)
         .order('is_required', { ascending: false }),
       supabase.from('storage_locations').select('*').eq('organization_id', orgId).order('name'),

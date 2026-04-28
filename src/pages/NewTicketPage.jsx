@@ -60,7 +60,8 @@ export default function NewTicketPage() {
 
     supabase
       .from('team_bag_items')
-      .select('id, equipment_categories(name), equipment_items(name, brand), team_bag_id, team_bags(team_id, teams(id, name))')
+      // FK disambiguator on equipment_items (team_bag_items has equipment_item_id + replacement_item_id).
+      .select('id, equipment_categories(name), equipment_items!team_bag_items_equipment_item_id_fkey(name, brand), team_bag_id, team_bags(team_id, teams(id, name))')
       .eq('id', bagItemId)
       .single()
       .then(({ data }) => {

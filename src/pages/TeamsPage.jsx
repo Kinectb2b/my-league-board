@@ -51,7 +51,8 @@ export default function TeamsPage() {
       supabase.from('divisions').select('*, sport_types(name), seasons(name)').eq('organization_id', orgId).order('sort_order'),
       supabase.from('seasons').select('*').eq('organization_id', orgId).order('created_at', { ascending: false }),
       supabase.from('sport_types').select('*').eq('organization_id', orgId).order('sort_order'),
-      supabase.from('team_bags').select('*, teams(name), kit_templates(name), profiles!built_by(full_name), team_bag_items(*, equipment_categories(name), equipment_items(name), bag_item_replacements(*))').eq('organization_id', orgId),
+      // FK disambiguator on team_bag_items.equipment_items (two FKs: equipment_item_id + replacement_item_id).
+      supabase.from('team_bags').select('*, teams(name), kit_templates(name), profiles!built_by(full_name), team_bag_items(*, equipment_categories(name), equipment_items!team_bag_items_equipment_item_id_fkey(name), bag_item_replacements(*))').eq('organization_id', orgId),
       supabase.from('kit_templates').select('*, kit_template_items(*, equipment_categories(name), equipment_items(name))').eq('organization_id', orgId),
       supabase.from('organization_members').select('*, profiles!profile_id(id, full_name, email)').eq('organization_id', orgId)
     ])
