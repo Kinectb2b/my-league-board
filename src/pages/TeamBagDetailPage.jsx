@@ -4,6 +4,7 @@ import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
+import { friendlyError } from '../lib/errors'
 import { getBagStatusConfig } from '../lib/bagStatus'
 
 export default function TeamBagDetailPage() {
@@ -102,16 +103,17 @@ export default function TeamBagDetailPage() {
 
   async function packItem(bagItemId, equipItemId, fromLocationId) {
     // 1. Mark team_bag_item as packed
-    await supabase.from('team_bag_items').update({
+    const { error: bagItemErr } = await supabase.from('team_bag_items').update({
       equipment_item_id: equipItemId,
       is_packed: true,
       packed_at: new Date().toISOString()
     }).eq('id', bagItemId)
+    if (bagItemErr) { addToast(friendlyError(bagItemErr), 'error'); return }
 
     // 2. Create consume stock_event (removes from location)
     const bagItem = bagItems.find(bi => bi.id === bagItemId)
     const equipItem = equipmentItems.find(ei => ei.id === equipItemId)
-    await supabase.from('stock_events').insert({
+    const { error: stockErr } = await supabase.from('stock_events').insert({
       organization_id: currentOrg.id,
       equipment_item_id: equipItemId,
       event_type: 'consume',
@@ -122,37 +124,41 @@ export default function TeamBagDetailPage() {
       notes: bagItem?.equipment_categories?.name || null,
       created_by: user?.id
     })
+    if (stockErr) { addToast(`Item packed but stock not deducted — ${friendlyError(stockErr)}`, 'error'); fetchAll(); return }
 
     addToast(`Packed ${equipItem?.name || 'item'}`)
     fetchAll()
   }
 
   async function unpackItem(bagItemId) {
-    await supabase.from('team_bag_items').update({
+    const { error } = await supabase.from('team_bag_items').update({
       is_packed: false,
       packed_at: null
     }).eq('id', bagItemId)
+    if (error) { addToast(friendlyError(error), 'error'); return }
     addToast('Item unpacked')
     fetchAll()
   }
 
   async function markBuilt() {
-    await supabase.from('team_bags').update({
+    const { error } = await supabase.from('team_bags').update({
       status: 'built',
       built_by: user?.id,
       built_at: new Date().toISOString(),
     }).eq('id', bag.id)
+    if (error) { addToast(friendlyError(error), 'error'); return }
     addToast('Bag marked as ready for pickup')
     fetchAll()
   }
 
   async function markPickedUp(pickedUpByName) {
     if (!pickedUpByName?.trim()) { addToast('Name is required', 'error'); return }
-    await supabase.from('team_bags').update({
+    const { error } = await supabase.from('team_bags').update({
       status: 'picked_up',
       picked_up_by_name: pickedUpByName.trim(),
       picked_up_at: new Date().toISOString(),
     }).eq('id', bag.id)
+    if (error) { addToast(friendlyError(error), 'error'); return }
     addToast('Pickup recorded')
     setShowPickup(false)
     fetchAll()
@@ -163,19 +169,19 @@ export default function TeamBagDetailPage() {
     if (!bagItem?.equipment_item_id) return
 
     if (action === 'lost' || action === 'damaged') {
-      // Create stock event (no location to deduct from since it's already consumed)
-      // Just update the bag item status
-      await supabase.from('team_bag_items').update({
+      const { error } = await supabase.from('team_bag_items').update({
         status: action,
         notes: reason || null
       }).eq('id', bagItemId)
+      if (error) { addToast(friendlyError(error), 'error'); return }
       addToast(`Item marked as ${action}`)
     } else if (action === 'swapped') {
-      await supabase.from('team_bag_items').update({
+      const { error } = await supabase.from('team_bag_items').update({
         status: 'swapped_out',
         swapped_out_at: new Date().toISOString(),
         swap_reason: reason || null
       }).eq('id', bagItemId)
+      if (error) { addToast(friendlyError(error), 'error'); return }
       addToast('Item marked for swap')
     }
     setReportingItem(null)
@@ -185,12 +191,13 @@ export default function TeamBagDetailPage() {
   async function returnBag(condition) {
     // Mark all active items as returned
     const activeItems = bagItems.filter(i => i.is_packed && i.status !== 'swapped_out' && i.status !== 'lost')
+    const itemErrors = []
     for (const item of activeItems) {
       if (item.equipment_item_id) {
         // Receive the item back to the first storage location
         const firstLoc = locations[0]
         if (firstLoc) {
-          await supabase.from('stock_events').insert({
+          const { error: stockErr } = await supabase.from('stock_events').insert({
             organization_id: currentOrg.id,
             equipment_item_id: item.equipment_item_id,
             event_type: 'receive',
@@ -200,28 +207,37 @@ export default function TeamBagDetailPage() {
             reason: `Returned from ${bag.teams?.name} bag`,
             created_by: user?.id
           })
+          if (stockErr) itemErrors.push(stockErr)
         }
-        await supabase.from('team_bag_items').update({
+        const { error: itemErr } = await supabase.from('team_bag_items').update({
           returned_at: new Date().toISOString()
         }).eq('id', item.id)
+        if (itemErr) itemErrors.push(itemErr)
       }
     }
 
-    await supabase.from('team_bags').update({
+    const { error } = await supabase.from('team_bags').update({
       status: 'returned',
       returned_at: new Date().toISOString(),
       returned_condition: condition || null
     }).eq('id', bag.id)
+    if (error) { addToast(friendlyError(error), 'error'); return }
 
-    addToast('Bag marked as returned')
+    if (itemErrors.length > 0) {
+      addToast(`Bag returned, but ${itemErrors.length} item(s) failed to update — ${friendlyError(itemErrors[0])}`, 'error')
+    } else {
+      addToast('Bag marked as returned')
+    }
     setShowReturn(false)
     fetchAll()
   }
 
   async function deleteBag() {
     if (!confirm('Delete this bag and all its items? This cannot be undone.')) return
-    await supabase.from('team_bag_items').delete().eq('team_bag_id', bag.id)
-    await supabase.from('team_bags').delete().eq('id', bag.id)
+    const { error: itemsErr } = await supabase.from('team_bag_items').delete().eq('team_bag_id', bag.id)
+    if (itemsErr) { addToast(friendlyError(itemsErr), 'error'); return }
+    const { error: bagErr } = await supabase.from('team_bags').delete().eq('id', bag.id)
+    if (bagErr) { addToast(friendlyError(bagErr), 'error'); return }
     addToast('Bag deleted')
     navigate('/team-bags')
   }

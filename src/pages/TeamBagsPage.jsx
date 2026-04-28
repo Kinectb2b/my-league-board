@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { useNavigate } from 'react-router-dom'
 import { BAG_FILTER_OPTIONS, getBagStatusConfig } from '../lib/bagStatus'
+import { friendlyError } from '../lib/errors'
 
 export default function TeamBagsPage() {
   const { currentOrg } = useOrg()
@@ -81,7 +82,13 @@ export default function TeamBagsPage() {
           })
         }
       })
-      await supabase.from('team_bag_items').insert(itemInserts)
+      const { error: itemsErr } = await supabase.from('team_bag_items').insert(itemInserts)
+      if (itemsErr) {
+        addToast(`Bag created but items failed — ${friendlyError(itemsErr)}`, 'error')
+        setShowCreate(false)
+        navigate(`/team-bags/${bag.id}`)
+        return
+      }
     }
 
     addToast('Bag created')

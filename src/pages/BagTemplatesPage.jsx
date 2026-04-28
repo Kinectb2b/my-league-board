@@ -4,6 +4,7 @@ import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
+import { friendlyError } from '../lib/errors'
 
 export default function BagTemplatesPage() {
   const { currentOrg, hasAnyRole, rolesLoading } = useOrg()
@@ -51,8 +52,10 @@ export default function BagTemplatesPage() {
 
   async function deleteTemplate(id, name) {
     if (!confirm(`Delete "${name}"? This won't affect teams that already have bags from this template.`)) return
-    await supabase.from('kit_template_items').delete().eq('kit_template_id', id)
-    await supabase.from('kit_templates').delete().eq('id', id)
+    const { error: itemsErr } = await supabase.from('kit_template_items').delete().eq('kit_template_id', id)
+    if (itemsErr) { addToast(friendlyError(itemsErr), 'error'); return }
+    const { error: tmplErr } = await supabase.from('kit_templates').delete().eq('id', id)
+    if (tmplErr) { addToast(friendlyError(tmplErr), 'error'); return }
     addToast('Template deleted')
     logActivity(currentOrg.id, 'deleted', 'template', name)
     fetchAll()
@@ -69,9 +72,9 @@ export default function BagTemplatesPage() {
         auto_assign_on_team_create: false
       })
       .select().single()
-    if (error || !newTmpl) { addToast('Failed to duplicate', 'error'); return }
+    if (error || !newTmpl) { addToast(friendlyError(error) || 'Failed to duplicate', 'error'); return }
     if (tmpl.kit_template_items?.length > 0) {
-      await supabase.from('kit_template_items').insert(
+      const { error: itemsErr } = await supabase.from('kit_template_items').insert(
         tmpl.kit_template_items.map(i => ({
           kit_template_id: newTmpl.id,
           category_id: i.category_id,
@@ -81,6 +84,11 @@ export default function BagTemplatesPage() {
           notes: i.notes
         }))
       )
+      if (itemsErr) {
+        addToast(`Template copied but items failed — ${friendlyError(itemsErr)}`, 'error')
+        fetchAll()
+        return
+      }
     }
     addToast(`Duplicated as "${tmpl.name} (copy)"`)
     logActivity(currentOrg.id, 'duplicated', 'template', tmpl.name)
@@ -261,17 +269,20 @@ function TemplateModal({ template, categories, sportTypes, divisions, equipmentI
 
     if (template) {
       const { error: updErr } = await supabase.from('kit_templates').update(payload).eq('id', template.id)
-      if (updErr) { setError(updErr.message); setSubmitting(false); return }
-      await supabase.from('kit_template_items').delete().eq('kit_template_id', template.id)
-      await supabase.from('kit_template_items').insert(itemRows.map(i => ({ kit_template_id: template.id, ...i })))
+      if (updErr) { setError(friendlyError(updErr)); setSubmitting(false); return }
+      const { error: delErr } = await supabase.from('kit_template_items').delete().eq('kit_template_id', template.id)
+      if (delErr) { setError(friendlyError(delErr)); setSubmitting(false); return }
+      const { error: insErr } = await supabase.from('kit_template_items').insert(itemRows.map(i => ({ kit_template_id: template.id, ...i })))
+      if (insErr) { setError(friendlyError(insErr)); setSubmitting(false); return }
       addToast('Template saved')
       logActivity(orgId, 'updated', 'template', name)
     } else {
       const { data, error: err } = await supabase.from('kit_templates')
         .insert({ organization_id: orgId, ...payload })
         .select().single()
-      if (err) { setError(err.message); setSubmitting(false); return }
-      await supabase.from('kit_template_items').insert(itemRows.map(i => ({ kit_template_id: data.id, ...i })))
+      if (err) { setError(friendlyError(err)); setSubmitting(false); return }
+      const { error: itemsErr } = await supabase.from('kit_template_items').insert(itemRows.map(i => ({ kit_template_id: data.id, ...i })))
+      if (itemsErr) { setError(friendlyError(itemsErr)); setSubmitting(false); return }
       addToast('Template created')
       logActivity(orgId, 'created', 'template', name)
     }

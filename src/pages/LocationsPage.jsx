@@ -54,12 +54,14 @@ export default function LocationsPage() {
   }
 
   async function updateLocation(id, updates) {
-    await supabase.from('storage_locations').update(updates).eq('id', id)
+    const { error } = await supabase.from('storage_locations').update(updates).eq('id', id)
+    if (error) { addToast(friendlyError(error), 'error'); return }
     setEditingLocation(null); fetchAll()
   }
 
   async function toggleSupplyRoom(id, current) {
-    await supabase.from('storage_locations').update({ is_supply_room: !current }).eq('id', id)
+    const { error } = await supabase.from('storage_locations').update({ is_supply_room: !current }).eq('id', id)
+    if (error) { addToast(friendlyError(error), 'error'); return }
     fetchAll()
   }
 
@@ -67,11 +69,13 @@ export default function LocationsPage() {
     const locStock = stock.filter(s => s.storage_location_id === id)
     if (locStock.length > 0) {
       if (!confirm('This location has stocked items. Deleting removes all stock records. Continue?')) return
-      await supabase.from('location_stock').delete().eq('storage_location_id', id)
+      const { error: stockErr } = await supabase.from('location_stock').delete().eq('storage_location_id', id)
+      if (stockErr) { addToast(friendlyError(stockErr), 'error'); return }
     } else {
       if (!confirm('Delete this location?')) return
     }
-    await supabase.from('storage_locations').delete().eq('id', id)
+    const { error } = await supabase.from('storage_locations').delete().eq('id', id)
+    if (error) { addToast(friendlyError(error), 'error'); return }
     if (activeLocation?.id === id) setActiveLocation(null)
     fetchAll()
   }
@@ -82,12 +86,14 @@ export default function LocationsPage() {
       equipment_item_id: equipmentItemId, quantity: parseInt(quantity) || 0,
       target_quantity: parseInt(targetQuantity) || null
     }).select()
-    if (!error) fetchAll()
+    if (error) addToast(friendlyError(error), 'error')
+    else fetchAll()
     return { error }
   }
 
   async function removeStockItem(stockId) {
-    await supabase.from('location_stock').delete().eq('id', stockId)
+    const { error } = await supabase.from('location_stock').delete().eq('id', stockId)
+    if (error) { addToast(friendlyError(error), 'error'); return }
     fetchAll()
   }
 
@@ -117,7 +123,12 @@ export default function LocationsPage() {
       if (changes.target !== undefined) d.target_quantity = parseInt(changes.target) || null
       return supabase.from('location_stock').update(d).eq('id', stockId)
     })
-    await Promise.all(updates)
+    const results = await Promise.all(updates)
+    const failed = results.filter(r => r.error)
+    if (failed.length > 0) {
+      addToast(`${failed.length} of ${results.length} change(s) failed — ${friendlyError(failed[0].error)}`, 'error')
+      return
+    }
     setLocalStock({}); setHasChanges(false)
     setSaveMessage('Saved!'); setTimeout(() => setSaveMessage(''), 2000); addToast('Changes saved')
     logActivity(currentOrg.id, 'updated stock', 'location', activeLocation?.name)

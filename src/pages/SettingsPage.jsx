@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
+import { friendlyError } from '../lib/errors'
 
 export default function SettingsPage() {
   const { currentOrg, refreshOrgs } = useOrg()
@@ -36,32 +37,39 @@ export default function SettingsPage() {
 
   async function deleteTemplate(id, name) {
     if (!confirm('Delete template "' + name + '"? This won\'t affect bags already created from it.')) return
-    await supabase.from('kit_template_items').delete().eq('kit_template_id', id)
-    await supabase.from('kit_templates').delete().eq('id', id)
+    const { error: itemsErr } = await supabase.from('kit_template_items').delete().eq('kit_template_id', id)
+    if (itemsErr) { addToast(friendlyError(itemsErr), 'error'); return }
+    const { error: tmplErr } = await supabase.from('kit_templates').delete().eq('id', id)
+    if (tmplErr) { addToast(friendlyError(tmplErr), 'error'); return }
     addToast('Template deleted')
     fetchAll()
   }
 
   async function saveTemplate(template, name, sportTypeId, items) {
     if (template) {
-      await supabase.from('kit_templates').update({ name, sport_type_id: sportTypeId || null }).eq('id', template.id)
-      await supabase.from('kit_template_items').delete().eq('kit_template_id', template.id)
+      const { error: updErr } = await supabase.from('kit_templates').update({ name, sport_type_id: sportTypeId || null }).eq('id', template.id)
+      if (updErr) { addToast(friendlyError(updErr), 'error'); return }
+      const { error: delErr } = await supabase.from('kit_template_items').delete().eq('kit_template_id', template.id)
+      if (delErr) { addToast(friendlyError(delErr), 'error'); return }
       if (items.length > 0) {
-        await supabase.from('kit_template_items').insert(items.map(i => ({
+        const { error: insErr } = await supabase.from('kit_template_items').insert(items.map(i => ({
           kit_template_id: template.id, equipment_item_id: i.equipment_item_id || null,
           category_id: i.category_id || null, quantity: 1, is_required: i.is_required
         })))
+        if (insErr) { addToast(friendlyError(insErr), 'error'); return }
       }
       addToast('Template updated')
     } else {
-      const { data } = await supabase.from('kit_templates').insert({
+      const { data, error: insErr } = await supabase.from('kit_templates').insert({
         organization_id: currentOrg.id, name, sport_type_id: sportTypeId || null
       }).select().single()
-      if (data && items.length > 0) {
-        await supabase.from('kit_template_items').insert(items.map(i => ({
+      if (insErr || !data) { addToast(friendlyError(insErr) || 'Failed to create template', 'error'); return }
+      if (items.length > 0) {
+        const { error: itemsErr } = await supabase.from('kit_template_items').insert(items.map(i => ({
           kit_template_id: data.id, equipment_item_id: i.equipment_item_id || null,
           category_id: i.category_id || null, quantity: 1, is_required: i.is_required
         })))
+        if (itemsErr) { addToast(`Template created but items failed — ${friendlyError(itemsErr)}`, 'error'); setEditingTemplate(null); setShowAdd(false); fetchAll(); return }
       }
       addToast('Template created')
     }
@@ -71,7 +79,7 @@ export default function SettingsPage() {
   async function saveOrgInfo() {
     setSavingOrg(true)
     const { error } = await supabase.from('organizations').update({ name: orgName, description: orgDescription }).eq('id', currentOrg.id)
-    if (error) addToast(error.message, 'error')
+    if (error) addToast(friendlyError(error), 'error')
     else { addToast('League info updated'); if (refreshOrgs) refreshOrgs() }
     setSavingOrg(false)
   }
