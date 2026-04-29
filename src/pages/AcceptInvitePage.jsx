@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
+import { logActivity } from '../lib/activity'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 export default function AcceptInvitePage() {
@@ -43,6 +44,21 @@ export default function AcceptInvitePage() {
   async function acceptInvite() {
     if (!user) { navigate('/auth?redirect=/accept-invite?token=' + token); return }
     setAccepting(true)
+
+    const inviteEmail = (invite.email || '').trim().toLowerCase()
+    const userEmail = (user.email || '').trim().toLowerCase()
+    if (inviteEmail !== userEmail) {
+      setError(`This invitation was sent to ${invite.email}. Please sign in with that account.`)
+      logActivity(
+        invite.organization_id,
+        'invitation.accept_email_mismatch',
+        'invitation',
+        invite.email,
+        `Authenticated user ${user.email} attempted to accept invitation sent to ${invite.email}`
+      )
+      setAccepting(false)
+      return
+    }
 
     // 1. Add to organization_members
     const { error: memberError } = await supabase.from('organization_members').insert({
