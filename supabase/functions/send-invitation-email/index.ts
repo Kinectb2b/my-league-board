@@ -1,22 +1,53 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const ALLOWED_ORIGINS = new Set([
+  "https://www.myleagueboard.com",
+  "http://localhost:5173",
+  "http://localhost:5174",
+]);
+
+function corsHeadersFor(req: Request): Record<string, string> {
+  const origin = req.headers.get("origin") || "";
+  const headers: Record<string, string> = {
+    "Vary": "Origin",
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+  if (ALLOWED_ORIGINS.has(origin)) {
+    headers["Access-Control-Allow-Origin"] = origin;
+  }
+  return headers;
+}
 
 Deno.serve(async (req: Request) => {
+  const cors = corsHeadersFor(req);
+  const originAllowed = !!cors["Access-Control-Allow-Origin"];
+
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    if (!originAllowed) {
+      return new Response("origin not allowed", { status: 403, headers: cors });
+    }
+    return new Response("ok", { headers: cors });
+  }
+
+  if (!originAllowed) {
+    return Response.json(
+      { success: false, error: "origin not allowed" },
+      { status: 403, headers: cors }
+    );
   }
 
   try {
-    const { invitation_id } = await req.json();
-    if (!invitation_id) {
+    // Require a Supabase-issued JWT in Authorization header
+    const authHeader = req.headers.get("authorization") || "";
+    const jwt = authHeader.toLowerCase().startsWith("bearer ")
+      ? authHeader.slice(7).trim()
+      : "";
+    if (!jwt) {
       return Response.json(
-        { success: false, error: "invitation_id is required" },
-        { status: 400, headers: corsHeaders }
+        { success: false, error: "missing bearer token" },
+        { status: 401, headers: cors }
       );
     }
 
@@ -32,11 +63,29 @@ Deno.serve(async (req: Request) => {
     if (!resendApiKey) {
       return Response.json(
         { success: false, error: "RESEND_API_KEY not configured" },
-        { status: 500, headers: corsHeaders }
+        { status: 500, headers: cors }
       );
     }
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    // Validate the JWT and identify the caller
+    const { data: userData, error: userErr } = await supabase.auth.getUser(jwt);
+    if (userErr || !userData?.user) {
+      return Response.json(
+        { success: false, error: "invalid or expired token" },
+        { status: 401, headers: cors }
+      );
+    }
+    const callerId = userData.user.id;
+
+    const { invitation_id } = await req.json();
+    if (!invitation_id) {
+      return Response.json(
+        { success: false, error: "invitation_id is required" },
+        { status: 400, headers: cors }
+      );
+    }
 
     // Fetch invitation with org name, inviter name, and board position
     const { data: invitation, error: fetchErr } = await supabase
@@ -50,7 +99,22 @@ Deno.serve(async (req: Request) => {
     if (fetchErr || !invitation) {
       return Response.json(
         { success: false, error: fetchErr?.message || "Invitation not found" },
-        { status: 404, headers: corsHeaders }
+        { status: 404, headers: cors }
+      );
+    }
+
+    // Verify caller is a member of the invitation's org
+    const { data: membership, error: memberErr } = await supabase
+      .from("organization_members")
+      .select("organization_id")
+      .eq("profile_id", callerId)
+      .eq("organization_id", invitation.organization_id)
+      .maybeSingle();
+
+    if (memberErr || !membership) {
+      return Response.json(
+        { success: false, error: "not a member of this organization" },
+        { status: 403, headers: cors }
       );
     }
 
@@ -156,7 +220,7 @@ This invitation expires in 7 days. If you weren't expecting this, you can safely
     if (!resendRes.ok) {
       return Response.json(
         { success: false, error: resendData.message || "Resend API error" },
-        { status: 502, headers: corsHeaders }
+        { status: 502, headers: cors }
       );
     }
 
@@ -168,12 +232,12 @@ This invitation expires in 7 days. If you weren't expecting this, you can safely
 
     return Response.json(
       { success: true, email_id: resendData.id },
-      { headers: corsHeaders }
+      { headers: cors }
     );
   } catch (err) {
     return Response.json(
       { success: false, error: err.message },
-      { status: 500, headers: corsHeaders }
+      { status: 500, headers: cors }
     );
   }
 });
