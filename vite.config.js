@@ -49,17 +49,11 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api/, /^\/functions/],
         runtimeCaching: [
           {
+            // Auth-bound RLS responses must not be cached: shared devices
+            // (coaches passing phones around) would otherwise serve user A's
+            // data to user B after a sign-in switch.
             urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api-cache',
-              networkTimeoutSeconds: 5,
-              expiration: {
-                maxEntries: 100,
-                maxAgeSeconds: 60 * 5
-              },
-              cacheableResponse: { statuses: [0, 200] }
-            }
+            handler: 'NetworkOnly',
           },
           {
             urlPattern: /\.(?:png|jpg|jpeg|svg|webp)$/,
