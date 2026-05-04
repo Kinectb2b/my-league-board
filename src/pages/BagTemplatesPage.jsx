@@ -195,24 +195,26 @@ export default function BagTemplatesPage() {
             {filteredTemplates.map(tmpl => {
               const itemCount = tmpl.kit_template_items?.length || 0
               return (
-                <div key={tmpl.id} className="bt-card" onClick={() => setEditing(tmpl)}>
-                  <div className="bt-card-head">
-                    <div className="bt-card-title">
-                      <div className="bt-card-name">{tmpl.name}</div>
-                      {tmpl.description && <div className="bt-card-desc">{tmpl.description}</div>}
+                <div key={tmpl.id} className="bt-card">
+                  <button type="button" className="bt-card-trigger" onClick={() => setEditing(tmpl)} aria-label={`Edit template ${tmpl.name}`}>
+                    <div className="bt-card-head">
+                      <div className="bt-card-title">
+                        <div className="bt-card-name">{tmpl.name}</div>
+                        {tmpl.description && <div className="bt-card-desc">{tmpl.description}</div>}
+                      </div>
+                      {tmpl.auto_assign_on_team_create
+                        ? <span className="bt-pill bt-pill-on">Auto-assign ON</span>
+                        : <span className="bt-pill bt-pill-off">Manual only</span>
+                      }
                     </div>
-                    {tmpl.auto_assign_on_team_create
-                      ? <span className="bt-pill bt-pill-on">Auto-assign ON</span>
-                      : <span className="bt-pill bt-pill-off">Manual only</span>
-                    }
-                  </div>
-                  <div className="bt-card-meta">
-                    {tmpl.sport_types?.name || '—'}{tmpl.division_name ? ` · ${tmpl.division_name}` : ''} · {itemCount} item{itemCount !== 1 ? 's' : ''}
-                  </div>
+                    <div className="bt-card-meta">
+                      {tmpl.sport_types?.name || '—'}{tmpl.division_name ? ` · ${tmpl.division_name}` : ''} · {itemCount} item{itemCount !== 1 ? 's' : ''}
+                    </div>
+                  </button>
                   <div className="bt-card-actions">
-                    <button type="button" className="bt-card-action" onClick={e => { e.stopPropagation(); setEditing(tmpl) }}>✎ Edit</button>
-                    <button type="button" className="bt-card-action" onClick={e => { e.stopPropagation(); duplicateTemplate(tmpl) }}>⧉ Duplicate</button>
-                    <button type="button" className="bt-card-action bt-card-action-danger" onClick={e => { e.stopPropagation(); deleteTemplate(tmpl.id, tmpl.name) }}>✕ Delete</button>
+                    <button type="button" className="bt-card-action" onClick={() => setEditing(tmpl)}>✎ Edit</button>
+                    <button type="button" className="bt-card-action" onClick={() => duplicateTemplate(tmpl)}>⧉ Duplicate</button>
+                    <button type="button" className="bt-card-action bt-card-action-danger" onClick={() => deleteTemplate(tmpl.id, tmpl.name)}>✕ Delete</button>
                   </div>
                 </div>
               )
@@ -244,7 +246,9 @@ export default function BagTemplatesPage() {
         @media (max-width: 768px) {
           .bt-table-wrap { display: none; }
           .bt-cards { display: flex; flex-direction: column; gap: 0.75rem; }
-          .bt-card { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 1rem; cursor: pointer; }
+          .bt-card { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 1rem; }
+          .bt-card-trigger { display: block; width: 100%; padding: 0; background: transparent; border: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+          .bt-card-trigger:focus-visible { outline: 2px solid var(--green-500); outline-offset: 2px; border-radius: var(--radius); }
           .bt-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.5rem; }
           .bt-card-title { flex: 1; min-width: 0; }
           .bt-card-name { font-weight: 600; font-size: 0.95rem; }

@@ -221,25 +221,28 @@ export default function LocationsPage() {
                 const totalQty = getLocationTotalQty(loc.id)
                 const needsRestock = getLocationNeedsRestock(loc.id)
                 const stockCount = getLocationStock(loc.id).length
+                const isActive = activeLocation?.id === loc.id
                 return (
-                  <div key={loc.id} className={`loc-card ${activeLocation?.id === loc.id ? 'loc-card-active' : ''} ${loc.is_supply_room ? 'loc-card-supply' : ''}`} onClick={() => switchLocation(loc)}>
-                    <div className="loc-card-top">
-                      <div>
-                        <strong>{loc.name}</strong>
-                        {loc.is_supply_room && <span className="supply-badge">Supply room</span>}
-                        {loc.location_type && !loc.is_supply_room && <span className="badge badge-neutral" style={{ marginLeft: '0.5rem' }}>{loc.location_type}</span>}
+                  <div key={loc.id} className={`loc-card ${isActive ? 'loc-card-active' : ''} ${loc.is_supply_room ? 'loc-card-supply' : ''}`}>
+                    <button type="button" className="loc-card-trigger" onClick={() => switchLocation(loc)} aria-current={isActive ? 'true' : undefined} aria-label={`Select location ${loc.name}`}>
+                      <div className="loc-card-top">
+                        <div>
+                          <strong>{loc.name}</strong>
+                          {loc.is_supply_room && <span className="supply-badge">Supply room</span>}
+                          {loc.location_type && !loc.is_supply_room && <span className="badge badge-neutral" style={{ marginLeft: '0.5rem' }}>{loc.location_type}</span>}
+                        </div>
                       </div>
-                      {canEdit && <div className="loc-card-actions">
-                        <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); toggleSupplyRoom(loc.id, loc.is_supply_room) }} aria-label={`Toggle supply room for ${loc.name}`} title="Toggle supply room" style={{ color: loc.is_supply_room ? 'var(--gold-500)' : undefined }}>★</button>
-                        <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setEditingLocation(loc) }} aria-label={`Edit ${loc.name}`} title="Edit">✎</button>
-                        <button className="btn-icon-sm btn-icon-danger" onClick={e => { e.stopPropagation(); deleteLocation(loc.id) }} aria-label={`Delete ${loc.name}`} title="Delete">✕</button>
-                      </div>}
-                    </div>
-                    {loc.description && <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>{loc.description}</p>}
-                    <div className="loc-card-stats">
-                      <span className="loc-stat">{stockCount} items · {totalQty} qty</span>
-                      {needsRestock > 0 && <span className="loc-restock-badge">{needsRestock} need restock</span>}
-                    </div>
+                      {loc.description && <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>{loc.description}</p>}
+                      <div className="loc-card-stats">
+                        <span className="loc-stat">{stockCount} items · {totalQty} qty</span>
+                        {needsRestock > 0 && <span className="loc-restock-badge">{needsRestock} need restock</span>}
+                      </div>
+                    </button>
+                    {canEdit && <div className="loc-card-actions">
+                      <button className="btn-icon-sm" onClick={() => toggleSupplyRoom(loc.id, loc.is_supply_room)} aria-label={`Toggle supply room for ${loc.name}`} title="Toggle supply room" style={{ color: loc.is_supply_room ? 'var(--gold-500)' : undefined }}>★</button>
+                      <button className="btn-icon-sm" onClick={() => setEditingLocation(loc)} aria-label={`Edit ${loc.name}`} title="Edit">✎</button>
+                      <button className="btn-icon-sm btn-icon-danger" onClick={() => deleteLocation(loc.id)} aria-label={`Delete ${loc.name}`} title="Delete">✕</button>
+                    </div>}
                   </div>
                 )
               })}
@@ -546,10 +549,10 @@ function AddStockModal({ locationId, locationName, availableItems, onAdd, onClos
                     <div key={cat}>
                       <div className="stock-cat-header">{cat}</div>
                       {items.map(item => (
-                        <div key={item.id} className="stock-item-row" onClick={() => { setAdding(item); setQty(0); setTarget('') }}>
+                        <button type="button" key={item.id} className="stock-item-row" onClick={() => { setAdding(item); setQty(0); setTarget('') }}>
                           <span>{item.name}</span>
                           <span className="text-muted" style={{ fontSize: '0.8rem' }}>Click to add →</span>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   ))}
@@ -560,7 +563,7 @@ function AddStockModal({ locationId, locationName, availableItems, onAdd, onClos
           )}
         </div>
       </div>
-      <style>{`.modal-wide{max-width:600px}.stock-cat-header{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-500);padding:.75rem 0 .25rem;border-bottom:1px solid var(--gray-100)}.stock-item-row{display:flex;justify-content:space-between;align-items:center;padding:.6rem .25rem;border-bottom:1px solid var(--gray-50);cursor:pointer;border-radius:4px;transition:background .1s}.stock-item-row:hover{background:var(--green-50)}`}</style>
+      <style>{`.modal-wide{max-width:600px}.stock-cat-header{font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--gray-500);padding:.75rem 0 .25rem;border-bottom:1px solid var(--gray-100)}.stock-item-row{display:flex;justify-content:space-between;align-items:center;width:100%;padding:.6rem .25rem;border:none;border-bottom:1px solid var(--gray-50);background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer;border-radius:4px;transition:background .1s}.stock-item-row:hover{background:var(--green-50)}.stock-item-row:focus-visible{outline:2px solid var(--green-500);outline-offset:-2px}`}</style>
     </div>
   )
 }
@@ -568,13 +571,15 @@ function AddStockModal({ locationId, locationName, availableItems, onAdd, onClos
 const styles = `
   .locations-layout { display: flex; gap: 1.5rem; }
   .locations-list-panel { flex: 0 0 300px; display: flex; flex-direction: column; gap: 0.5rem; max-height: calc(100vh - 200px); overflow-y: auto; }
-  .loc-card { background: white; border: 1.5px solid var(--gray-200); border-radius: var(--radius-lg); padding: 1rem; cursor: pointer; transition: border-color 0.15s; }
+  .loc-card { background: white; border: 1.5px solid var(--gray-200); border-radius: var(--radius-lg); transition: border-color 0.15s; position: relative; }
   .loc-card:hover { border-color: var(--green-400); }
   .loc-card-active { border-color: var(--green-600) !important; box-shadow: 0 0 0 2px rgba(58,157,94,0.15); }
   .loc-card-supply { border-left: 3px solid var(--gold-500); }
+  .loc-card-trigger { display: block; width: 100%; padding: 1rem; background: transparent; border: none; text-align: left; font: inherit; color: inherit; cursor: pointer; border-radius: var(--radius-lg); }
+  .loc-card-trigger:focus-visible { outline: 2px solid var(--green-500); outline-offset: 2px; }
   .loc-card-top { display: flex; justify-content: space-between; align-items: flex-start; }
-  .loc-card-actions { display: flex; gap: 0.25rem; opacity: 0; transition: opacity 0.15s; }
-  .loc-card:hover .loc-card-actions { opacity: 1; }
+  .loc-card-actions { position: absolute; top: 0.5rem; right: 0.5rem; display: flex; gap: 0.25rem; opacity: 0; transition: opacity 0.15s; }
+  .loc-card:hover .loc-card-actions, .loc-card:focus-within .loc-card-actions { opacity: 1; }
   .loc-card-stats { margin-top: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
   .loc-stat { font-size: 0.8rem; font-weight: 500; color: var(--green-700); }
   .supply-badge { display: inline-block; background: var(--gold-100); color: #92700c; font-size: 0.7rem; font-weight: 600; padding: 0.1rem 0.45rem; border-radius: 10px; margin-left: 0.4rem; }

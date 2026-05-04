@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -206,18 +206,18 @@ export default function EquipmentDashboardPage() {
             </>
           )}
         </div>
-        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => document.getElementById('attention-panel')?.scrollIntoView({ behavior: 'smooth' })}>
+        <button type="button" className="stat-card stat-card-clickable" onClick={() => document.getElementById('attention-panel')?.scrollIntoView({ behavior: 'smooth' })}>
           <div className="stat-number" style={{ color: belowTarget.length > 0 ? 'var(--orange-500)' : 'var(--green-600)' }}>{belowTarget.length}</div>
           <div className="stat-label">below reorder threshold</div>
-        </div>
-        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/tickets')}>
+        </button>
+        <Link to="/tickets" className="stat-card stat-card-clickable">
           <div className="stat-number" style={{ color: equipTickets.length > 0 ? 'var(--red-500)' : 'var(--gray-500)' }}>{equipTickets.length}</div>
           <div className="stat-label">open equipment tickets</div>
-        </div>
-        <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/team-bags')}>
+        </Link>
+        <Link to="/team-bags" className="stat-card stat-card-clickable">
           <div className="stat-number">{bagsPending}</div>
           <div className="stat-label">bags to assemble</div>
-        </div>
+        </Link>
       </div>
 
       {/* Middle: Needs Attention + Recent Activity */}
@@ -241,7 +241,7 @@ export default function EquipmentDashboardPage() {
                   const tc = getTicketTypeConfig(t.ticket_type)
                   const pc = PRIORITY_COLORS[t.priority] || PRIORITY_COLORS.normal
                   return (
-                    <div key={`t-${t.id}`} className="eqd-attention-row eqd-attention-clickable" onClick={() => navigate(`/tickets/${t.id}`)}>
+                    <Link key={`t-${t.id}`} to={`/tickets/${t.id}`} className="eqd-attention-row eqd-attention-clickable">
                       <span style={{ fontSize: '1rem' }}>🎫</span>
                       <div className="eqd-attention-info">
                         <div className="eqd-attention-title">{t.title}</div>
@@ -251,7 +251,7 @@ export default function EquipmentDashboardPage() {
                           <span className="badge" style={{ backgroundColor: pc.bg, color: pc.text, fontSize: '0.65rem' }}>{t.priority}</span>
                         </div>
                       </div>
-                    </div>
+                    </Link>
                   )
                 } else {
                   const r = item.data
@@ -328,13 +328,13 @@ export default function EquipmentDashboardPage() {
         ) : (
           <div className="eqd-loc-grid">
             {locationCards.map(loc => (
-              <div key={loc.id} className="eqd-loc-card" onClick={() => navigate('/equipment')}>
+              <Link key={loc.id} to="/equipment" className="eqd-loc-card">
                 <div className="eqd-loc-name">{loc.name}</div>
                 <div className="eqd-loc-stats">
                   <span style={{ fontSize: '1.2rem', fontWeight: 700, color: 'var(--green-800)' }}>{loc.totalQty}</span>
                   <span className="text-muted"> items · {loc.skuCount} SKUs</span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}
@@ -344,9 +344,9 @@ export default function EquipmentDashboardPage() {
       {Object.keys(bagStats).length > 0 && (
         <div className="eqd-bag-summary">
           <span>Bags:</span>
-          {bagStats.building > 0 && <span className="eqd-bag-chip" onClick={() => navigate('/team-bags')}>{bagStats.building} building</span>}
-          {bagStats.assigned > 0 && <span className="eqd-bag-chip" onClick={() => navigate('/team-bags')}>{bagStats.assigned} assigned</span>}
-          {bagStats.returned > 0 && <span className="eqd-bag-chip" onClick={() => navigate('/team-bags')}>{bagStats.returned} returned</span>}
+          {bagStats.building > 0 && <Link to="/team-bags" className="eqd-bag-chip">{bagStats.building} building</Link>}
+          {bagStats.assigned > 0 && <Link to="/team-bags" className="eqd-bag-chip">{bagStats.assigned} assigned</Link>}
+          {bagStats.returned > 0 && <Link to="/team-bags" className="eqd-bag-chip">{bagStats.returned} returned</Link>}
         </div>
       )}
 
@@ -395,8 +395,9 @@ const dashStyles = `
     font-size: 0.85rem;
   }
   .eqd-attention-row:last-child { border-bottom: none; }
-  .eqd-attention-clickable { cursor: pointer; border-radius: var(--radius); }
+  .eqd-attention-clickable { cursor: pointer; border-radius: var(--radius); text-decoration: none; color: inherit; }
   .eqd-attention-clickable:hover { background: var(--green-50); }
+  .eqd-attention-clickable:focus-visible { outline: 2px solid var(--green-500); outline-offset: -2px; }
   .eqd-attention-info { flex: 1; min-width: 0; }
   .eqd-attention-title { font-weight: 500; }
   .eqd-attention-meta {
@@ -427,14 +428,18 @@ const dashStyles = `
     gap: 0.75rem;
   }
   .eqd-loc-card {
+    display: block;
     background: var(--gray-50);
     border: 1px solid var(--gray-200);
     border-radius: var(--radius);
     padding: 0.85rem 1rem;
     cursor: pointer;
+    text-decoration: none;
+    color: inherit;
     transition: border-color 0.15s, box-shadow 0.15s;
   }
   .eqd-loc-card:hover { border-color: var(--green-400); box-shadow: var(--shadow-sm); }
+  .eqd-loc-card:focus-visible { outline: 2px solid var(--green-500); outline-offset: 2px; }
   .eqd-loc-name { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.2rem; }
   .eqd-loc-stats { font-size: 0.8rem; }
   .eqd-bag-summary {
@@ -450,6 +455,7 @@ const dashStyles = `
     color: var(--gray-600);
   }
   .eqd-bag-chip {
+    display: inline-block;
     padding: 0.15rem 0.5rem;
     background: var(--green-50);
     border: 1px solid var(--green-200);
@@ -458,8 +464,20 @@ const dashStyles = `
     font-size: 0.8rem;
     font-weight: 500;
     cursor: pointer;
+    text-decoration: none;
   }
   .eqd-bag-chip:hover { background: var(--green-100); }
+  .eqd-bag-chip:focus-visible { outline: 2px solid var(--green-500); outline-offset: 2px; }
+  .stat-card-clickable {
+    display: block;
+    width: 100%;
+    font: inherit;
+    text-align: left;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+  }
+  .stat-card-clickable:focus-visible { outline: 2px solid var(--green-500); outline-offset: 2px; }
   @media (max-width: 1023px) {
     .eqd-kpi-grid { grid-template-columns: repeat(2, 1fr); }
     .eqd-middle-grid { grid-template-columns: 1fr; }
