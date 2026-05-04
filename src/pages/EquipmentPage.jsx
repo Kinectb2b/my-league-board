@@ -524,9 +524,9 @@ export default function EquipmentPage() {
                       {canEdit && (
                         <td>
                           <div className="eq-row-actions">
-                            <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setEditingItem(item) }} title="Edit">✎</button>
+                            <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setEditingItem(item) }} aria-label={`Edit ${item.name}`} title="Edit">✎</button>
                             <div className="eq-action-menu-wrap">
-                              <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setOpenActionMenu(openActionMenu === item.id ? null : item.id) }} title="Actions">⋯</button>
+                              <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setOpenActionMenu(openActionMenu === item.id ? null : item.id) }} aria-label={`Actions for ${item.name}`} aria-haspopup="menu" aria-expanded={openActionMenu === item.id} title="Actions">⋯</button>
                               {openActionMenu === item.id && (
                                 <div className="eq-action-dropdown" onClick={e => e.stopPropagation()}>
                                   <button onClick={() => { setReceiveItem(item); setOpenActionMenu(null) }}>+ Receive</button>
@@ -1569,7 +1569,7 @@ function ItemDetailModal({ item, locationStock, locations, canEdit, onClose }) {
                     <input type="number" min="1" value={stockQty} onChange={e => setStockQty(parseInt(e.target.value) || 0)} style={{ padding: '0.35rem', fontSize: '0.85rem', fontFamily: 'inherit', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius)', width: '100%' }} />
                   </div>
                   <button className="btn-primary" onClick={quickAddStock} disabled={stockSubmitting || !stockLocId} style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}>{stockSubmitting ? '...' : 'Add'}</button>
-                  <button className="btn-icon-sm" onClick={() => setShowQuickStock(false)}>✕</button>
+                  <button className="btn-icon-sm" onClick={() => setShowQuickStock(false)} aria-label="Close">✕</button>
                 </div>
               )}
             </div>

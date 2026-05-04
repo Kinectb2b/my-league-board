@@ -177,7 +177,7 @@ export default function MembersPage() {
             <div className="modal" onClick={e => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>Assign {assigningPosition.title}</h2>
-                <button className="btn-icon" onClick={() => setAssigningPosition(null)}>✕</button>
+                <button className="btn-icon" onClick={() => setAssigningPosition(null)} aria-label="Close">✕</button>
               </div>
               <div className="modal-form">
                 <p className="text-muted" style={{ marginBottom: '1rem' }}>{assigningPosition.description}</p>
