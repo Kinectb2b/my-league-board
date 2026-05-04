@@ -142,49 +142,83 @@ export default function BagTemplatesPage() {
           <button className="btn-primary" onClick={() => setShowAdd(true)}>+ Create your first template</button>
         </div>
       ) : (
-        <div className="table-container">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Sport / Division</th>
-                <th>Items</th>
-                <th>Auto-Assign</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredTemplates.map(tmpl => {
-                const itemCount = tmpl.kit_template_items?.length || 0
-                return (
-                  <tr key={tmpl.id} onClick={() => setEditing(tmpl)} style={{ cursor: 'pointer' }}>
-                    <td>
-                      <strong>{tmpl.name}</strong>
-                      {tmpl.description && <span className="item-detail">{tmpl.description}</span>}
-                    </td>
-                    <td className="text-muted">
-                      {tmpl.sport_types?.name || '—'}{tmpl.division_name ? ` / ${tmpl.division_name}` : ''}
-                    </td>
-                    <td>{itemCount} item{itemCount !== 1 ? 's' : ''}</td>
-                    <td>
-                      {tmpl.auto_assign_on_team_create
-                        ? <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '9999px', background: 'var(--green-100)', color: 'var(--green-700)' }}>Auto-assign ON</span>
-                        : <span style={{ fontSize: '0.75rem', fontWeight: 500, padding: '0.15rem 0.5rem', borderRadius: '9999px', background: 'var(--gray-100)', color: 'var(--gray-500)' }}>Manual only</span>
-                      }
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.25rem' }}>
-                        <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setEditing(tmpl) }} title="Edit">✎</button>
-                        <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); duplicateTemplate(tmpl) }} title="Duplicate">⧉</button>
-                        <button className="btn-icon-sm btn-icon-danger" onClick={e => { e.stopPropagation(); deleteTemplate(tmpl.id, tmpl.name) }} title="Delete">✕</button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          {/* Desktop table — hidden at <=768px */}
+          <div className="table-container bt-table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Sport / Division</th>
+                  <th>Items</th>
+                  <th>Auto-Assign</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTemplates.map(tmpl => {
+                  const itemCount = tmpl.kit_template_items?.length || 0
+                  return (
+                    <tr key={tmpl.id} onClick={() => setEditing(tmpl)} style={{ cursor: 'pointer' }}>
+                      <td>
+                        <strong>{tmpl.name}</strong>
+                        {tmpl.description && <span className="item-detail">{tmpl.description}</span>}
+                      </td>
+                      <td className="text-muted">
+                        {tmpl.sport_types?.name || '—'}{tmpl.division_name ? ` / ${tmpl.division_name}` : ''}
+                      </td>
+                      <td>{itemCount} item{itemCount !== 1 ? 's' : ''}</td>
+                      <td>
+                        {tmpl.auto_assign_on_team_create
+                          ? <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '9999px', background: 'var(--green-100)', color: 'var(--green-700)' }}>Auto-assign ON</span>
+                          : <span style={{ fontSize: '0.75rem', fontWeight: 500, padding: '0.15rem 0.5rem', borderRadius: '9999px', background: 'var(--gray-100)', color: 'var(--gray-500)' }}>Manual only</span>
+                        }
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: '0.25rem' }}>
+                          <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setEditing(tmpl) }} title="Edit">✎</button>
+                          <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); duplicateTemplate(tmpl) }} title="Duplicate">⧉</button>
+                          <button className="btn-icon-sm btn-icon-danger" onClick={e => { e.stopPropagation(); deleteTemplate(tmpl.id, tmpl.name) }} title="Delete">✕</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards — hidden at >=769px. Solves M-01 (row actions
+              were horizontal-scroll-hidden in the table at 390px) and gives
+              the row actions 44pt+ tap targets with text labels. */}
+          <div className="bt-cards">
+            {filteredTemplates.map(tmpl => {
+              const itemCount = tmpl.kit_template_items?.length || 0
+              return (
+                <div key={tmpl.id} className="bt-card" onClick={() => setEditing(tmpl)}>
+                  <div className="bt-card-head">
+                    <div className="bt-card-title">
+                      <div className="bt-card-name">{tmpl.name}</div>
+                      {tmpl.description && <div className="bt-card-desc">{tmpl.description}</div>}
+                    </div>
+                    {tmpl.auto_assign_on_team_create
+                      ? <span className="bt-pill bt-pill-on">Auto-assign ON</span>
+                      : <span className="bt-pill bt-pill-off">Manual only</span>
+                    }
+                  </div>
+                  <div className="bt-card-meta">
+                    {tmpl.sport_types?.name || '—'}{tmpl.division_name ? ` · ${tmpl.division_name}` : ''} · {itemCount} item{itemCount !== 1 ? 's' : ''}
+                  </div>
+                  <div className="bt-card-actions">
+                    <button type="button" className="bt-card-action" onClick={e => { e.stopPropagation(); setEditing(tmpl) }}>✎ Edit</button>
+                    <button type="button" className="bt-card-action" onClick={e => { e.stopPropagation(); duplicateTemplate(tmpl) }}>⧉ Duplicate</button>
+                    <button type="button" className="bt-card-action bt-card-action-danger" onClick={e => { e.stopPropagation(); deleteTemplate(tmpl.id, tmpl.name) }}>✕ Delete</button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
       )}
 
       {(showAdd || editing) && (
@@ -204,6 +238,33 @@ export default function BagTemplatesPage() {
         .btn-icon-sm { background:none; border:none; color:var(--gray-400); cursor:pointer; font-size:0.85rem; padding:0.2rem 0.4rem; border-radius:4px; transition:color .15s,background .15s; line-height:1; }
         .btn-icon-sm:hover { color:var(--green-700); background:var(--green-100); }
         .btn-icon-danger:hover { color:var(--red-500)!important; background:var(--red-100)!important; }
+
+        /* Mobile card variant for the templates list (M-01 fix). */
+        .bt-cards { display: none; }
+        @media (max-width: 768px) {
+          .bt-table-wrap { display: none; }
+          .bt-cards { display: flex; flex-direction: column; gap: 0.75rem; }
+          .bt-card { background: white; border: 1px solid var(--gray-200); border-radius: var(--radius-lg); padding: 1rem; cursor: pointer; }
+          .bt-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 0.75rem; margin-bottom: 0.5rem; }
+          .bt-card-title { flex: 1; min-width: 0; }
+          .bt-card-name { font-weight: 600; font-size: 0.95rem; }
+          .bt-card-desc { color: var(--gray-500); font-size: 0.8rem; margin-top: 0.15rem; }
+          .bt-pill { font-size: 0.7rem; font-weight: 600; padding: 0.15rem 0.5rem; border-radius: 9999px; white-space: nowrap; flex-shrink: 0; }
+          .bt-pill-on { background: var(--green-100); color: var(--green-700); }
+          .bt-pill-off { background: var(--gray-100); color: var(--gray-500); font-weight: 500; }
+          .bt-card-meta { color: var(--gray-500); font-size: 0.8rem; margin-bottom: 0.75rem; }
+          .bt-card-actions { display: flex; gap: 0.5rem; border-top: 1px solid var(--gray-100); padding-top: 0.75rem; }
+          .bt-card-action {
+            flex: 1; min-height: 44px;
+            display: flex; align-items: center; justify-content: center; gap: 0.35rem;
+            font-size: 0.85rem; font-weight: 500; font-family: inherit;
+            background: white; color: var(--gray-600);
+            border: 1px solid var(--gray-200); border-radius: var(--radius);
+            cursor: pointer; padding: 0.5rem 0.75rem;
+          }
+          .bt-card-action:hover, .bt-card-action:active { color: var(--green-700); background: var(--green-50); border-color: var(--green-200); }
+          .bt-card-action.bt-card-action-danger:hover, .bt-card-action.bt-card-action-danger:active { color: var(--red-500); background: var(--red-100); border-color: var(--red-100); }
+        }
       `}</style>
     </>
   )
