@@ -125,7 +125,7 @@ export default function TeamBagDetailPage() {
       notes: bagItem?.equipment_categories?.name || null,
       created_by: user?.id
     })
-    if (stockErr) { addToast(`Item packed but stock not deducted — ${friendlyError(stockErr)}`, 'error'); fetchAll(); return }
+    if (stockErr) { addToast("Item packed, but the stock count didn't update. Refresh to check the totals.", 'error'); fetchAll(); return }
 
     addToast(`Packed ${equipItem?.name || 'item'}`)
     fetchAll()
@@ -153,7 +153,7 @@ export default function TeamBagDetailPage() {
   }
 
   async function markPickedUp(pickedUpByName) {
-    if (!pickedUpByName?.trim()) { addToast('Name is required', 'error'); return }
+    if (!pickedUpByName?.trim()) { addToast("Type the name of whoever's picking up this bag.", 'error'); return }
     const { error } = await supabase.from('team_bags').update({
       status: 'picked_up',
       picked_up_by_name: pickedUpByName.trim(),
@@ -225,7 +225,7 @@ export default function TeamBagDetailPage() {
     if (error) { addToast(friendlyError(error), 'error'); return }
 
     if (itemErrors.length > 0) {
-      addToast(`Bag returned, but ${itemErrors.length} item(s) failed to update — ${friendlyError(itemErrors[0])}`, 'error')
+      addToast(`Bag returned, but ${itemErrors.length} item${itemErrors.length === 1 ? "" : "s"} didn't update. Refresh and check.`, 'error')
     } else {
       addToast('Bag marked as returned')
     }

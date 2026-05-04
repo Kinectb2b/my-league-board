@@ -252,7 +252,7 @@ function TeamDetail({ team, showBackToList }) {
     if (error) {
       setBagItems(items => items.map(i => i.id === itemId ? { ...i, is_packed: current } : i))
       setBagSummary(s => s ? { ...s, items_missing: s.items_missing + (next ? 1 : -1) } : s)
-      addToast('Could not update — try again', 'error')
+      addToast("We couldn't update that item. Try again, or refresh if it keeps happening.", 'error')
     }
   }
 
@@ -276,7 +276,7 @@ function TeamDetail({ team, showBackToList }) {
     const { error } = await supabase.from('team_bag_items').update({ is_packed: false, notes: note }).eq('id', itemId)
     if (error) {
       setBagItems(items => items.map(i => i.id === itemId ? prev : i))
-      addToast('Could not save — try again', 'error')
+      addToast("We couldn't save that note. Try again, or refresh if it keeps happening.", 'error')
     } else {
       logActivity(currentOrg?.id, 'marked missing', 'team_bag_item', prev?.equipment_categories?.name || 'item', trimmed || null)
       addToast('Marked missing')

@@ -25,7 +25,7 @@ export default function BagTemplatesPage() {
   // Permission guard — redirect if not admin or equipment_manager
   useEffect(() => {
     if (!rolesLoading && !hasAnyRole(['admin', 'equipment_manager'])) {
-      addToast('Not authorized', 'error')
+      addToast("You don't have permission to manage templates.", 'error')
       navigate('/')
     }
   }, [rolesLoading])
@@ -73,7 +73,7 @@ export default function BagTemplatesPage() {
         auto_assign_on_team_create: false
       })
       .select().single()
-    if (error || !newTmpl) { addToast(friendlyError(error) || 'Failed to duplicate', 'error'); return }
+    if (error || !newTmpl) { addToast(friendlyError(error), 'error'); return }
     if (tmpl.kit_template_items?.length > 0) {
       const { error: itemsErr } = await supabase.from('kit_template_items').insert(
         tmpl.kit_template_items.map(i => ({
@@ -86,7 +86,7 @@ export default function BagTemplatesPage() {
         }))
       )
       if (itemsErr) {
-        addToast(`Template copied but items failed — ${friendlyError(itemsErr)}`, 'error')
+        addToast("Template was copied, but the items didn't come with it. Add them by hand.", 'error')
         fetchAll()
         return
       }

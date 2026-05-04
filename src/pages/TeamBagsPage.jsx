@@ -65,7 +65,7 @@ export default function TeamBagsPage() {
       status: 'building'
     }).select().single()
 
-    if (error || !bag) { addToast(error?.message || 'Failed to create bag', 'error'); return }
+    if (error || !bag) { addToast(friendlyError(error), 'error'); return }
 
     if (tmplItems?.length > 0) {
       // Create one team_bag_item per quantity unit in template
@@ -85,7 +85,7 @@ export default function TeamBagsPage() {
       })
       const { error: itemsErr } = await supabase.from('team_bag_items').insert(itemInserts)
       if (itemsErr) {
-        addToast(`Bag created but items failed — ${friendlyError(itemsErr)}`, 'error')
+        addToast("Bag was created, but the items didn't pack in. Open it and add them by hand.", 'error')
         setShowCreate(false)
         navigate(`/team-bags/${bag.id}`)
         return
