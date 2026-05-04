@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { TICKET_TYPES, getAssigneeRoleForType } from '../lib/ticketRouting'
 import { validateFile, uploadAttachment } from '../lib/ticketAttachments'
+import { friendlyError } from '../lib/errors'
 
 export default function NewTicketPage() {
   const { currentOrg } = useOrg()
@@ -128,14 +129,14 @@ export default function NewTicketPage() {
       team_bag_item_id: teamBagItemId || null
     }).select().single()
 
-    if (insertErr) { setError(insertErr.message); setSubmitting(false); return }
+    if (insertErr) { setError(friendlyError(insertErr)); setSubmitting(false); return }
 
     // Upload attachments
     for (const file of files) {
       try {
         await uploadAttachment(ticket.id, currentOrg.id, file, user.id)
       } catch (err) {
-        addToast(`Failed to upload ${file.name}`, 'error')
+        addToast(`Couldn't attach ${file.name}. Open the ticket and try the upload again.`, 'error')
       }
     }
 

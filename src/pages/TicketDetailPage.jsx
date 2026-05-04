@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { getTicketTypeConfig, getAssigneeRoleForType, PRIORITY_COLORS, STATUS_COLORS } from '../lib/ticketRouting'
 import { validateFile, uploadAttachment, getAttachmentUrl } from '../lib/ticketAttachments'
+import { friendlyError } from '../lib/errors'
 import { SkeletonPage } from '../components/Skeleton'
 
 function timeAgo(date) {
@@ -128,7 +129,7 @@ export default function TicketDetailPage() {
       body: commentBody.trim()
     })
     setSubmittingComment(false)
-    if (error) { addToast(error.message, 'error'); return }
+    if (error) { addToast(friendlyError(error), 'error'); return }
     setCommentBody('')
     fetchAll()
   }
@@ -144,7 +145,8 @@ export default function TicketDetailPage() {
       addToast('File uploaded')
       fetchAll()
     } catch (uploadErr) {
-      addToast('Upload failed: ' + uploadErr.message, 'error')
+      console.error('Attachment upload failed:', uploadErr)
+      addToast("That file didn't upload. Try again, or check your connection.", 'error')
     }
     setUploadingFile(false)
     e.target.value = ''
@@ -155,7 +157,8 @@ export default function TicketDetailPage() {
       const url = await getAttachmentUrl(att.storage_path)
       window.open(url, '_blank')
     } catch (err) {
-      addToast('Could not load file', 'error')
+      console.error('Attachment load failed:', err)
+      addToast("We couldn't open that attachment. Try again, or refresh the page.", 'error')
     }
   }
 
