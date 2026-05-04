@@ -51,7 +51,7 @@ export default function SafetyPage() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Safety Officer</h1>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Safety</h1>
           <p className="text-muted">Incident reports, background checks, and first aid</p>
         </div>
         {canEdit && tab === 'incidents' && <button className="btn-primary" onClick={() => setShowAddIncident(true)}>+ Report incident</button>}
