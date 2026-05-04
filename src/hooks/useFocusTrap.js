@@ -24,16 +24,26 @@ function getFocusableElements(container) {
  *
  * Responsibilities (WAI-ARIA dialog pattern):
  *   1. Snapshot the trigger (document.activeElement) on mount
- *   2. Move focus to first focusable inside the container, UNLESS something
- *      inside already has focus (preserves child autoFocus)
+ *   2. Move focus into the modal: prefer initialFocusRef.current if provided,
+ *      else first focusable inside the container. Skipped if something inside
+ *      already has focus (preserves child autoFocus).
  *   3. Trap Tab / Shift+Tab to cycle within the container
  *   4. Close on Escape
  *   5. Restore focus to the trigger on unmount
  *
+ * Why initialFocusRef exists: modal containers typically render the close X
+ * button first in DOM order (inside .modal-header), so the naive "first
+ * focusable" pick lands on Close. That's a poor experience — screen readers
+ * announce "Close, button" before the user hears the modal's purpose, and
+ * a reflexive Enter dismisses the modal. Callers pass a ref to the element
+ * that should receive focus (typically the first form input). If omitted,
+ * the hook falls back to first focusable — useful for confirmation modals
+ * with no clear input-first surface.
+ *
  * onClose is held via ref so its identity changes (inline arrow funcs) don't
  * tear down and rebind the keydown listener on every parent re-render.
  */
-export function useFocusTrap({ onClose }) {
+export function useFocusTrap({ onClose, initialFocusRef }) {
   const containerRef = useRef(null)
   const triggerRef = useRef(null)
   const onCloseRef = useRef(onClose)
@@ -48,7 +58,8 @@ export function useFocusTrap({ onClose }) {
       : null
 
     if (!container.contains(document.activeElement)) {
-      getFocusableElements(container)[0]?.focus()
+      const target = initialFocusRef?.current ?? getFocusableElements(container)[0]
+      target?.focus()
     }
 
     function handleKey(e) {

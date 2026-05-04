@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
@@ -276,7 +276,8 @@ export default function BagTemplatesPage() {
 }
 
 function TemplateModal({ template, categories, sportTypes, divisions, equipmentItems, orgId, onDone, onClose }) {
-  const modalRef = useFocusTrap({ onClose })
+  const nameInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: nameInputRef })
   const { addToast } = useToast()
   const [name, setName] = useState(template?.name || '')
   const [sportTypeId, setSportTypeId] = useState(template?.sport_type_id || '')
@@ -368,7 +369,7 @@ function TemplateModal({ template, categories, sportTypes, divisions, equipmentI
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>Template name *</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Minor A Baseball Bag" required />
+            <input ref={nameInputRef} type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Minor A Baseball Bag" required />
           </div>
           <div className="form-row">
             <div className="form-group">
