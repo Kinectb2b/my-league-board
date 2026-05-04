@@ -17,7 +17,7 @@ export default function MembersPage() {
   const [assigningPosition, setAssigningPosition] = useState(null)
   const canEdit = hasAnyRole(['admin'])
 
-  useEffect(() => { document.title = 'Board Directory | My League Board' }, [])
+  useEffect(() => { document.title = 'Board directory | My League Board' }, [])
 
   const fetchAll = useCallback(async () => {
     if (!currentOrg) return
@@ -84,7 +84,7 @@ export default function MembersPage() {
     <>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Board Directory</h1>
+            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Board directory</h1>
             <p className="text-muted">{filledPositions.length} of {positions.length} positions filled · {members.length} members</p>
           </div>
           {canEdit && <button className="btn-primary" onClick={() => setShowAddMember(true)}>+ Add member</button>}
@@ -92,7 +92,7 @@ export default function MembersPage() {
 
         {/* Board Positions */}
         <div style={{ marginBottom: '2rem' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-700)' }}>Board of Directors</h2>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-700)' }}>Board of directors</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '0.75rem' }}>
             {positions.map(pos => (
               <div key={pos.id} style={{
@@ -135,7 +135,7 @@ export default function MembersPage() {
 
         {/* All Members */}
         <div>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-700)' }}>All Members</h2>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-700)' }}>All members</h2>
           <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
             <table className="data-table" style={{ marginBottom: 0 }}>
               <thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead>

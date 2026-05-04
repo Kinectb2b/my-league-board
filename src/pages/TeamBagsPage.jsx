@@ -20,7 +20,7 @@ export default function TeamBagsPage() {
   const [filterStatus, setFilterStatus] = useState('')
   const [filterSeason, setFilterSeason] = useState('')
 
-  useEffect(() => { document.title = 'Team Bags | My League Board' }, [])
+  useEffect(() => { document.title = 'Team bags | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
   useEffect(() => {
     if (seasons.length > 0 && !filterSeason) {

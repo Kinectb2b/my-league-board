@@ -30,7 +30,7 @@ export default function BagTemplatesPage() {
     }
   }, [rolesLoading])
 
-  useEffect(() => { document.title = 'Bag Templates | My League Board' }, [])
+  useEffect(() => { document.title = 'Bag templates | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
 
   async function fetchAll() {

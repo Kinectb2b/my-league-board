@@ -36,7 +36,7 @@ export default function NewTicketPage() {
   const [locations, setLocations] = useState([])
   const [equipmentItems, setEquipmentItems] = useState([])
 
-  useEffect(() => { document.title = 'New Ticket | My League Board' }, [])
+  useEffect(() => { document.title = 'New ticket | My League Board' }, [])
   useEffect(() => {
     if (currentOrg) {
       const orgId = currentOrg.id

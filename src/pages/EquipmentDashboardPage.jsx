@@ -48,7 +48,7 @@ export default function EquipmentDashboardPage() {
   const [activityLoading, setActivityLoading] = useState(true)
   const [locationsLoading, setLocationsLoading] = useState(true)
 
-  useEffect(() => { document.title = 'Equipment Dashboard | My League Board' }, [])
+  useEffect(() => { document.title = 'Equipment dashboard | My League Board' }, [])
   useEffect(() => { if (currentOrg) fetchAll() }, [currentOrg])
 
   async function fetchAll() {

@@ -73,22 +73,22 @@ export default function Sidebar() {
             <span className="nav-icon">📊</span> Dashboard
           </NavLink>}
           <NavLink to="/my-team" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
-            <span className="nav-icon">⚾</span> My Team
+            <span className="nav-icon">⚾</span> My team
           </NavLink>
           {canSee('dashboard') && <NavLink to="/tickets" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">🎫</span> Tickets{ticketBadge > 0 && <span style={{ marginLeft: 'auto', background: '#ef4444', color: 'white', fontSize: '0.65rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '10px', lineHeight: 1.2 }}>{ticketBadge}</span>}
           </NavLink>}
           {canSee('bagTemplates') && <NavLink to="/equipment/dashboard" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
-            <span className="nav-icon">🏠</span> Equipment Home
+            <span className="nav-icon">🏠</span> Equipment home
           </NavLink>}
           {canSee('equipment') && <NavLink to="/equipment" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">📦</span> Inventory
           </NavLink>}
           {canSee('bagTemplates') && <NavLink to="/bag-templates" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
-            <span className="nav-icon">📋</span> Bag Templates
+            <span className="nav-icon">📋</span> Bag templates
           </NavLink>}
           {canSee('teamBags') && <NavLink to="/team-bags" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
-            <span className="nav-icon">🎒</span> Team Bags
+            <span className="nav-icon">🎒</span> Team bags
           </NavLink>}
           {canSee('teams') && <NavLink to="/teams" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">👥</span> Teams

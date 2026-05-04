@@ -21,7 +21,7 @@ export default function BoardPage() {
   const [invitePrefilledPosition, setInvitePrefilledPosition] = useState(null)
   const canEdit = hasAnyRole(['admin'])
 
-  useEffect(() => { document.title = 'Board of Directors | My League Board' }, [])
+  useEffect(() => { document.title = 'Board of directors | My League Board' }, [])
 
   const fetchAll = useCallback(async () => {
     if (!currentOrg) return
@@ -74,7 +74,7 @@ export default function BoardPage() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
         <div>
-          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Board of Directors</h1>
+          <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Board of directors</h1>
           <p className="text-muted">{filledCount} of {positions.length} positions filled</p>
         </div>
         {canEdit && (

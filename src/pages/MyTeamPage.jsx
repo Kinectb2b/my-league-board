@@ -45,7 +45,7 @@ export default function MyTeamPage() {
   }
 
   useEffect(() => {
-    document.title = 'My Team | My League Board'
+    document.title = 'My team | My League Board'
   }, [])
 
   if (loading) return <div style={{ padding: '1rem 0' }}><SkeletonPage rows={4} /></div>
@@ -109,7 +109,7 @@ function TeamPicker({ teams }) {
     <>
       <div className="page-header">
         <div>
-          <h1>My Teams</h1>
+          <h1>My teams</h1>
           <p className="text-muted">Select a team to view details</p>
         </div>
       </div>
@@ -180,7 +180,7 @@ function TeamDetail({ team, showBackToList }) {
   }, [currentOrg?.id, team?.id])
 
   useEffect(() => {
-    if (team) document.title = `${team.name} | My Team | My League Board`
+    if (team) document.title = `${team.name} | My team | My League Board`
   }, [team?.name])
 
   async function fetchTeamData() {

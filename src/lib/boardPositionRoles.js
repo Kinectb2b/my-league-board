@@ -43,7 +43,7 @@ export const POSITION_CATEGORIES = [
     titles: ['President', 'Secretary', 'Treasurer'],
   },
   {
-    name: 'Division Vice Presidents',
+    name: 'Division vice presidents',
     titles: [
       'VP of Tee Ball and Pee Wee',
       'VP of Minor Baseball',
@@ -54,7 +54,7 @@ export const POSITION_CATEGORIES = [
     ],
   },
   {
-    name: 'Functional Managers',
+    name: 'Functional managers',
     titles: [
       'Player Agent',
       'Umpire In Chief',
@@ -68,7 +68,7 @@ export const POSITION_CATEGORIES = [
     ],
   },
   {
-    name: 'Board Members at Large',
+    name: 'Board members at large',
     // Matches by prefix rather than exact title
     matcher: (title) => title.startsWith('Board Member at Large'),
   },
