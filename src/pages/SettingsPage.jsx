@@ -113,7 +113,11 @@ export default function SettingsPage() {
           </div>
 
           {loading ? <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div> : templates.length === 0 ? (
-            <div className="empty-state"><p>No templates yet. Create one to define what goes in a team gear bag.</p></div>
+            <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+              <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No templates yet.</p>
+              <p className="text-muted" style={{ marginBottom: '1.25rem' }}>Templates define what equipment goes in a team bag. Create one to enable auto-assign on team creation.</p>
+              <button className="btn-primary" onClick={() => setShowAdd(true)}>+ Create your first template</button>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {templates.map(t => (
@@ -146,7 +150,10 @@ export default function SettingsPage() {
         <div style={{ marginTop: '2rem' }}>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '1rem' }}>Seasons</h2>
           {seasons.length === 0 ? (
-            <div className="empty-state"><p>No seasons yet.</p></div>
+            <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+              <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No seasons yet.</p>
+              <p className="text-muted">Seasons tag team rosters and gear assignments by year. Your league's first season is created during initial setup.</p>
+            </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {seasons.map(s => (

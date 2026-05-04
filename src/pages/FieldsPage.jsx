@@ -145,9 +145,18 @@ export default function FieldsPage() {
       {loading ? (
         <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div>
       ) : filtered.length === 0 ? (
-        <div className="empty-state">
-          <p>{fields.length === 0 ? "No fields yet. Click '+ Add field' to add the first one." : 'No fields match this filter.'}</p>
-        </div>
+        fields.length === 0 ? (
+          <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+            <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No fields yet.</p>
+            <p className="text-muted" style={{ marginBottom: isAdmin ? '1.25rem' : 0 }}>Fields are where your league plays — diamonds, batting cages, practice spaces. Track status and report issues from one place.</p>
+            {isAdmin && <button className="btn-primary" onClick={() => setShowAdd(true)}>+ Add your first field</button>}
+          </div>
+        ) : (
+          <div className="empty-state" style={{ padding: '2rem', textAlign: 'center' }}>
+            <p>No fields match this filter.</p>
+            <p className="text-muted" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Try the "All" filter to see every field.</p>
+          </div>
+        )
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
           {filtered.map(field => {

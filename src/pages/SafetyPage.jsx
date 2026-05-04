@@ -69,7 +69,7 @@ export default function SafetyPage() {
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '0', borderBottom: '2px solid var(--gray-200)', marginBottom: '1.5rem' }}>
-        {[{id:'incidents',label:'Incidents'},{id:'checks',label:'Background Checks'},{id:'kits',label:'First Aid Kits'}].map(t => (
+        {[{id:'incidents',label:'Incidents'},{id:'checks',label:'Background checks'},{id:'kits',label:'First aid kits'}].map(t => (
           <button key={t.id} onClick={() => setTab(t.id)} style={{
             padding: '0.5rem 1.25rem', background: 'none', border: 'none', borderBottom: tab === t.id ? '2px solid var(--green-600)' : '2px solid transparent',
             marginBottom: '-2px', fontFamily: 'inherit', fontWeight: tab === t.id ? 600 : 400, color: tab === t.id ? 'var(--green-700)' : 'var(--gray-500)', cursor: 'pointer', fontSize: '0.9rem'
@@ -81,7 +81,11 @@ export default function SafetyPage() {
       {tab === 'incidents' && (
         <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
           {incidents.length === 0 ? (
-            <div className="empty-state" style={{ padding: '2rem' }}><p>No incidents reported. {canEdit ? 'Click + Report incident if one occurs.' : ''}</p></div>
+            <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+              <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No incidents reported.</p>
+              <p className="text-muted" style={{ marginBottom: canEdit ? '1.25rem' : 0 }}>If something happens that needs documenting — an injury, a near-miss — file a report so the league has a record.</p>
+              {canEdit && <button className="btn-primary" onClick={() => setShowAddIncident(true)}>+ Report incident</button>}
+            </div>
           ) : (
             <table className="data-table" style={{ marginBottom: 0 }}>
               <thead><tr><th>Date</th><th>Player</th><th>Injury</th><th>Location</th><th>Status</th></tr></thead>
@@ -108,7 +112,11 @@ export default function SafetyPage() {
       {tab === 'checks' && (
         <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
           {checks.length === 0 ? (
-            <div className="empty-state" style={{ padding: '2rem' }}><p>No background checks tracked yet. {canEdit ? 'Click + Add check to start tracking.' : ''}</p></div>
+            <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+              <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No background checks tracked yet.</p>
+              <p className="text-muted" style={{ marginBottom: canEdit ? '1.25rem' : 0 }}>Track checks for coaches, volunteers, and anyone working with players. Records expire annually so they need re-running.</p>
+              {canEdit && <button className="btn-primary" onClick={() => setShowAddCheck(true)}>+ Add your first check</button>}
+            </div>
           ) : (
             <table className="data-table" style={{ marginBottom: 0 }}>
               <thead><tr><th>Name</th><th>Role</th><th>Submitted</th><th>Expires</th><th>Status</th></tr></thead>
@@ -138,7 +146,11 @@ export default function SafetyPage() {
       {tab === 'kits' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
           {kits.length === 0 ? (
-            <div className="empty-state"><p>No first aid kits tracked yet. {canEdit ? 'Click + Add kit to start tracking.' : ''}</p></div>
+            <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+              <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No first aid kits tracked yet.</p>
+              <p className="text-muted" style={{ marginBottom: canEdit ? '1.25rem' : 0 }}>Know which kits are where, when each was last inspected, and what's been used. Keeps the league ready and accountable.</p>
+              {canEdit && <button className="btn-primary" onClick={() => setShowAddKit(true)}>+ Add your first kit</button>}
+            </div>
           ) : kits.map(kit => (
             <div key={kit.id} style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', padding: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
