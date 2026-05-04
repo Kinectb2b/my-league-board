@@ -32,13 +32,23 @@ import { SkeletonPageShell } from './components/Skeleton'
 import PWAUpdatePrompt from './components/PWAUpdatePrompt'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, roles }) {
   const { user, loading: authLoading } = useAuth()
-  const { currentOrg, loading: orgLoading } = useOrg()
+  const { currentOrg, loading: orgLoading, rolesLoading, hasAnyRole } = useOrg()
 
   if (authLoading || orgLoading) return <SkeletonPageShell />
   if (!user) return <Navigate to="/auth" />
   if (!currentOrg) return <Navigate to="/setup" />
+  // Wait on roles before deciding to bounce — bouncing during the roles
+  // loading window would race the sidebar's own canSee() and feel arbitrary.
+  if (roles && rolesLoading) return <SkeletonPageShell />
+  if (roles && !hasAnyRole(roles)) {
+    // Send users to the page closest to their actual job. Anyone with an
+    // elevated role lands on /dashboard (their hub); pure-coach/volunteer
+    // users land on /my-team where their work lives.
+    const fallback = hasAnyRole(['admin', 'equipment_manager', 'board_member']) ? '/dashboard' : '/my-team'
+    return <Navigate to={fallback} replace />
+  }
   return <AppLayout>{children}</AppLayout>
 }
 
@@ -54,7 +64,7 @@ function AppRoutes() {
       <Route path="/setup" element={!user ? <Navigate to="/auth" /> : (currentOrg ? <Navigate to="/dashboard" /> : <OrgSetupPage />)} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/equipment/dashboard" element={<ProtectedRoute><EquipmentDashboardPage /></ProtectedRoute>} />
-      <Route path="/equipment" element={<ProtectedRoute><EquipmentPage /></ProtectedRoute>} />
+      <Route path="/equipment" element={<ProtectedRoute roles={['admin', 'equipment_manager', 'board_member']}><EquipmentPage /></ProtectedRoute>} />
       <Route path="/teams" element={<ProtectedRoute><TeamsPage /></ProtectedRoute>} />
       <Route path="/locations" element={<ProtectedRoute><LocationsPage /></ProtectedRoute>} />
       <Route path="/treasurer" element={<ProtectedRoute><TreasurerPage /></ProtectedRoute>} />
