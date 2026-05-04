@@ -7,6 +7,7 @@ import { useToast } from '../components/Toast'
 import { getTicketTypeConfig, getAssigneeRoleForType, PRIORITY_COLORS, STATUS_COLORS } from '../lib/ticketRouting'
 import { validateFile, uploadAttachment, getAttachmentUrl } from '../lib/ticketAttachments'
 import { friendlyError } from '../lib/errors'
+import { resolveActorLabel } from '../lib/actorLabel'
 import { SkeletonPage } from '../components/Skeleton'
 
 function timeAgo(date) {
@@ -83,7 +84,14 @@ export default function TicketDetailPage() {
     }
     setTicket(rawTicket)
     setComments(rawComments.map(c => ({ ...c, author: { full_name: nameMap[c.author_id] || null } })))
-    setEvents(rawEvents.map(e => ({ ...e, actor: { full_name: nameMap[e.actor_id] || null } })))
+    setEvents(rawEvents.map(e => ({
+      ...e,
+      actor_label: resolveActorLabel({
+        actorId: e.actor_id,
+        currentUserId: user?.id,
+        fullName: nameMap[e.actor_id],
+      }),
+    })))
     setAttachments(a.data || [])
     setOrgMembers(m.data || [])
     setLoading(false)
@@ -169,7 +177,7 @@ export default function TicketDetailPage() {
   ].sort((a, b) => new Date(a.at) - new Date(b.at))
 
   function formatEvent(ev) {
-    const actor = ev.actor?.full_name || 'Someone'
+    const actor = ev.actor_label
     const d = ev.detail || {}
     switch (ev.event_type) {
       case 'opened': return `${actor} opened this ticket`

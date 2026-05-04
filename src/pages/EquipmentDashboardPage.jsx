@@ -4,6 +4,7 @@ import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { getTicketTypeConfig, PRIORITY_COLORS, STATUS_COLORS } from '../lib/ticketRouting'
+import { resolveActorLabel } from '../lib/actorLabel'
 
 function timeAgo(date) {
   const s = Math.floor((Date.now() - new Date(date)) / 1000)
@@ -143,19 +144,14 @@ export default function EquipmentDashboardPage() {
           .in('id', actorIds)
         profilesById = Object.fromEntries((profiles || []).map(p => [p.id, p]))
       }
-      const decorated = eventRows.map(e => {
-        let actor_label
-        if (!e.created_by) {
-          actor_label = 'Someone'
-        } else if (e.created_by === user?.id) {
-          actor_label = 'You'
-        } else if (profilesById[e.created_by]?.full_name) {
-          actor_label = profilesById[e.created_by].full_name
-        } else {
-          actor_label = 'A former member'
-        }
-        return { ...e, actor_label }
-      })
+      const decorated = eventRows.map(e => ({
+        ...e,
+        actor_label: resolveActorLabel({
+          actorId: e.created_by,
+          currentUserId: user?.id,
+          fullName: profilesById[e.created_by]?.full_name,
+        }),
+      }))
       setRecentEvents(decorated)
       setActivityLoading(false)
     })()
