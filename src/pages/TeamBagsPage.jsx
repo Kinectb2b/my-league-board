@@ -128,12 +128,24 @@ export default function TeamBagsPage() {
       {loading ? (
         <div className="loading-state">Loading...</div>
       ) : templates.length === 0 ? (
-        <div className="empty-state">
-          <p>Create a bag template first, then come back here to build bags.</p>
-          <button className="btn-secondary" onClick={() => navigate('/bag-templates')}>Go to templates</button>
+        <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+          <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No bag templates yet.</p>
+          <p className="text-muted" style={{ marginBottom: '1.25rem' }}>Every team bag starts from a template. Create one in Bag templates and bags will show up here as you build them.</p>
+          <button className="btn-primary" onClick={() => navigate('/bag-templates')}>Go to bag templates</button>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="empty-state"><p>{bags.length === 0 ? 'No bags built yet.' : 'No bags match your filters.'}</p></div>
+        bags.length === 0 ? (
+          <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+            <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No bags built yet.</p>
+            <p className="text-muted" style={{ marginBottom: '1.25rem' }}>Bags get created automatically when you add a team that matches a template. You can also build one manually from Teams.</p>
+            <button className="btn-secondary" onClick={() => navigate('/teams')}>Go to teams</button>
+          </div>
+        ) : (
+          <div className="empty-state" style={{ padding: '2rem', textAlign: 'center' }}>
+            <p>No bags match your filters.</p>
+            <p className="text-muted" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Try a different season or status.</p>
+          </div>
+        )
       ) : (
         <div className="table-container">
           <table className="data-table">

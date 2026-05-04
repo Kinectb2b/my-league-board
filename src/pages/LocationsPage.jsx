@@ -243,7 +243,13 @@ export default function LocationsPage() {
                   </div>
                 )
               })}
-              {locations.length === 0 && <div className="empty-state"><p>Add your storage locations.</p></div>}
+              {locations.length === 0 && (
+                <div className="empty-state" style={{ padding: '3rem 1rem', textAlign: 'center' }}>
+                  <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No storage locations yet.</p>
+                  <p className="text-muted" style={{ marginBottom: '1.25rem', fontSize: '0.85rem' }}>Locations are where equipment lives — your supply room, individual coach bags, anywhere stock gets counted.</p>
+                  {canEdit && <button className="btn-primary" onClick={() => setShowAdd(true)}>+ Add your first location</button>}
+                </div>
+              )}
             </div>
 
             {activeLocation && (
@@ -262,7 +268,11 @@ export default function LocationsPage() {
                 </div>
 
                 {getLocationStock(activeLocation.id).length === 0 ? (
-                  <div className="empty-state"><p>No items stocked here yet.</p></div>
+                  <div className="empty-state" style={{ padding: '2rem 1rem', textAlign: 'center' }}>
+                    <p style={{ marginBottom: '0.5rem' }}>No items stocked here yet.</p>
+                    <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: canEdit ? '1rem' : 0 }}>Add items so coaches can see what's available.</p>
+                    {canEdit && <button className="btn-primary" onClick={() => setShowAddStock(true)}>+ Add items</button>}
+                  </div>
                 ) : (
                   <>
                     <table className="data-table">

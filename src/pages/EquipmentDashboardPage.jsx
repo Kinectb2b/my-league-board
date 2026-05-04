@@ -266,7 +266,7 @@ export default function EquipmentDashboardPage() {
               {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: '2.5rem', borderRadius: 'var(--radius)' }} />)}
             </div>
           ) : recentEvents.length === 0 ? (
-            <p className="text-muted" style={{ textAlign: 'center', padding: '1.5rem' }}>No recent activity yet.</p>
+            <p className="text-muted" style={{ textAlign: 'center', padding: '1.5rem' }}>Activity will show up here as items move around.</p>
           ) : (
             <div className="eqd-activity-list">
               {recentEvents.map(ev => {
@@ -307,7 +307,10 @@ export default function EquipmentDashboardPage() {
             {[1, 2, 3, 4].map(i => <div key={i} className="skeleton" style={{ height: '80px', borderRadius: 'var(--radius-lg)' }} />)}
           </div>
         ) : locationCards.length === 0 ? (
-          <p className="text-muted" style={{ textAlign: 'center', padding: '1.5rem' }}>No storage locations set up yet.</p>
+          <div style={{ textAlign: 'center', padding: '1.5rem' }}>
+            <p className="text-muted" style={{ marginBottom: '0.5rem' }}>No storage locations set up yet.</p>
+            <button className="btn-secondary" onClick={() => navigate('/locations')} style={{ fontSize: '0.85rem' }}>Set up locations</button>
+          </div>
         ) : (
           <div className="eqd-loc-grid">
             {locationCards.map(loc => (

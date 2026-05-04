@@ -476,7 +476,18 @@ export default function EquipmentPage() {
           {loading ? (
             <div className="loading-state"><div className="skeleton" style={{ width: '200px', height: '1rem', margin: '2rem auto' }}></div></div>
           ) : filtered.length === 0 ? (
-            <div className="empty-state"><p>{items.length === 0 ? 'No equipment added yet.' : 'No items match your filters.'}</p></div>
+            items.length === 0 ? (
+              <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
+                <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No equipment added yet.</p>
+                <p className="text-muted" style={{ marginBottom: '1.25rem' }}>Inventory is where every piece of league equipment lives — bats, helmets, first-aid supplies, anything you need to track.</p>
+                {canEdit && <button className="btn-primary" onClick={() => setShowAddModal(true)}>+ Add equipment</button>}
+              </div>
+            ) : (
+              <div className="empty-state" style={{ padding: '2rem', textAlign: 'center' }}>
+                <p>No items match your filters.</p>
+                <p className="text-muted" style={{ fontSize: '0.85rem', marginTop: '0.5rem' }}>Try widening your search or clearing a filter.</p>
+              </div>
+            )
           ) : (
             <div className="table-container">
               <table className="data-table">
