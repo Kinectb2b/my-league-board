@@ -28,6 +28,7 @@ import TeamBagDetailPage from './pages/TeamBagDetailPage'
 import MyTeamPage from './pages/MyTeamPage'
 import FieldsPage from './pages/FieldsPage'
 import AppLayout from './components/AppLayout'
+import { SkeletonPageShell } from './components/Skeleton'
 import PWAUpdatePrompt from './components/PWAUpdatePrompt'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 
@@ -35,7 +36,7 @@ function ProtectedRoute({ children }) {
   const { user, loading: authLoading } = useAuth()
   const { currentOrg, loading: orgLoading } = useOrg()
 
-  if (authLoading || orgLoading) return <div className="loading-page">Loading...</div>
+  if (authLoading || orgLoading) return <SkeletonPageShell />
   if (!user) return <Navigate to="/auth" />
   if (!currentOrg) return <Navigate to="/setup" />
   return <AppLayout>{children}</AppLayout>
@@ -45,7 +46,7 @@ function AppRoutes() {
   const { user, loading: authLoading } = useAuth()
   const { currentOrg } = useOrg()
 
-  if (authLoading) return <div className="loading-page">Loading...</div>
+  if (authLoading) return <SkeletonPageShell />
 
   return (
     <Routes>

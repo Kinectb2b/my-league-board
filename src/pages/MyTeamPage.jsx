@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { fetchCoachTeams } from '../lib/coachTeams'
 import { useToast } from '../components/Toast'
 import EmailStatusChip from '../components/EmailStatusChip'
+import { SkeletonPage } from '../components/Skeleton'
 import { useUserRoles } from '../hooks/useUserRoles'
 import { logActivity } from '../lib/activity'
 import { STATUS_COLORS, getTicketTypeConfig, PRIORITY_COLORS } from '../lib/ticketRouting'
@@ -47,7 +48,7 @@ export default function MyTeamPage() {
     document.title = 'My Team | My League Board'
   }, [])
 
-  if (loading) return <div className="loading-state" style={{ padding: '3rem' }}>Loading...</div>
+  if (loading) return <div style={{ padding: '1rem 0' }}><SkeletonPage rows={4} /></div>
 
   // No teams — empty state
   if (teams.length === 0) {
@@ -282,7 +283,7 @@ function TeamDetail({ team, showBackToList }) {
     }
   }
 
-  if (loading) return <div className="loading-state" style={{ padding: '3rem' }}>Loading...</div>
+  if (loading) return <div style={{ padding: '1rem 0' }}><SkeletonPage rows={4} /></div>
 
   const sc = bag ? getBagStatusConfig(bag.status) : null
 

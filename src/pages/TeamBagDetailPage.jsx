@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { friendlyError } from '../lib/errors'
 import { getBagStatusConfig } from '../lib/bagStatus'
+import { SkeletonPage } from '../components/Skeleton'
 
 export default function TeamBagDetailPage() {
   const { id } = useParams()
@@ -58,7 +59,7 @@ export default function TeamBagDetailPage() {
     if (b.data) document.title = `${b.data.teams?.name || 'Bag'} | My League Board`
   }
 
-  if (loading) return <div className="loading-state" style={{ padding: '3rem' }}>Loading...</div>
+  if (loading) return <div style={{ padding: '1rem 0' }}><SkeletonPage rows={5} /></div>
   if (!bag) return <div className="empty-state"><p>Bag not found.</p><button className="btn-secondary" onClick={() => navigate('/team-bags')}>Back to bags</button></div>
 
   const requiredItems = bagItems.filter(i => i.is_required)

@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { getTicketTypeConfig, getAssigneeRoleForType, PRIORITY_COLORS, STATUS_COLORS } from '../lib/ticketRouting'
 import { validateFile, uploadAttachment, getAttachmentUrl } from '../lib/ticketAttachments'
+import { SkeletonPage } from '../components/Skeleton'
 
 function timeAgo(date) {
   const s = Math.floor((Date.now() - new Date(date)) / 1000)
@@ -88,7 +89,7 @@ export default function TicketDetailPage() {
     if (rawTicket) document.title = `${rawTicket.title} | Tickets`
   }
 
-  if (loading) return <div className="loading-state" style={{ padding: '3rem' }}>Loading...</div>
+  if (loading) return <div style={{ padding: '1rem 0' }}><SkeletonPage rows={4} /></div>
   if (!ticket) return <div className="empty-state"><p>Ticket not found.</p><button className="btn-secondary" onClick={() => navigate('/tickets')}>Back</button></div>
 
   const tc = getTicketTypeConfig(ticket.ticket_type)

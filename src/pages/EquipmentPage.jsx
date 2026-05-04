@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
+import { SkeletonList } from '../components/Skeleton'
 
 const EQUIPMENT_TYPES = [
   { id: 'balls', label: 'Balls' },
@@ -1433,7 +1434,7 @@ function HistoryModal({ item, locations, orgId, onClose }) {
         <div className="modal-header"><h2>History: {item.name}</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
         <div className="modal-form">
           {loading ? (
-            <div className="loading-state">Loading...</div>
+            <SkeletonList rows={4} rowHeight="2rem" />
           ) : events.length === 0 ? (
             <p className="text-muted">No stock events recorded yet.</p>
           ) : (

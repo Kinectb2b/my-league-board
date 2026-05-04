@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
 import { friendlyError } from '../lib/errors'
+import { SkeletonList } from '../components/Skeleton'
 
 export default function BagTemplatesPage() {
   const { currentOrg, hasAnyRole, rolesLoading } = useOrg()
@@ -133,7 +134,7 @@ export default function BagTemplatesPage() {
       )}
 
       {loading ? (
-        <div className="loading-state">Loading...</div>
+        <SkeletonList rows={5} style={{ marginTop: '0.5rem' }} />
       ) : templates.length === 0 ? (
         <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
           <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No bag templates yet.</p>
