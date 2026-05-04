@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOrg } from '../contexts/OrgContext'
+import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { getTicketTypeConfig, PRIORITY_COLORS, STATUS_COLORS } from '../lib/ticketRouting'
 
@@ -25,6 +26,7 @@ const EVENT_VERBS = {
 
 export default function EquipmentDashboardPage() {
   const { currentOrg } = useOrg()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   // KPI data
@@ -120,27 +122,43 @@ export default function EquipmentDashboardPage() {
         setBagStats(stats)
       })
 
-    // 5. Recent stock events
+    // 5. Recent stock events — actor names resolved in a second query so we
+    //    can distinguish NULL actor / orphaned actor / self / named actor
+    //    cleanly (the embedded join was returning null on every row, which
+    //    is what produced the "Someone moved…" feel). IIFE so this still
+    //    runs in parallel with the rest of fetchAll.
     setActivityLoading(true)
-    supabase.from('stock_events')
-      .select('*, equipment_items:equipment_item_id(name), from_loc:from_location_id(name), to_loc:to_location_id(name), profiles:created_by(full_name)')
-      .eq('organization_id', orgId)
-      .order('created_at', { ascending: false })
-      .limit(15)
-      .then(({ data, error }) => {
-        if (error) {
-          // Fallback without profile join
-          supabase.from('stock_events')
-            .select('*, equipment_items:equipment_item_id(name), from_loc:from_location_id(name), to_loc:to_location_id(name)')
-            .eq('organization_id', orgId)
-            .order('created_at', { ascending: false })
-            .limit(15)
-            .then(({ data: d2 }) => { setRecentEvents(d2 || []); setActivityLoading(false) })
+    ;(async () => {
+      const { data: events } = await supabase.from('stock_events')
+        .select('*, equipment_items:equipment_item_id(name), from_loc:from_location_id(name), to_loc:to_location_id(name)')
+        .eq('organization_id', orgId)
+        .order('created_at', { ascending: false })
+        .limit(15)
+      const eventRows = events || []
+      const actorIds = [...new Set(eventRows.map(e => e.created_by).filter(Boolean))]
+      let profilesById = {}
+      if (actorIds.length > 0) {
+        const { data: profiles } = await supabase.from('profiles')
+          .select('id, full_name')
+          .in('id', actorIds)
+        profilesById = Object.fromEntries((profiles || []).map(p => [p.id, p]))
+      }
+      const decorated = eventRows.map(e => {
+        let actor_label
+        if (!e.created_by) {
+          actor_label = 'Someone'
+        } else if (e.created_by === user?.id) {
+          actor_label = 'You'
+        } else if (profilesById[e.created_by]?.full_name) {
+          actor_label = profilesById[e.created_by].full_name
         } else {
-          setRecentEvents(data || [])
-          setActivityLoading(false)
+          actor_label = 'A former member'
         }
+        return { ...e, actor_label }
       })
+      setRecentEvents(decorated)
+      setActivityLoading(false)
+    })()
 
     // 6. Locations grid
     setLocationsLoading(true)
@@ -271,7 +289,7 @@ export default function EquipmentDashboardPage() {
             <div className="eqd-activity-list">
               {recentEvents.map(ev => {
                 const verb = EVENT_VERBS[ev.event_type] || ev.event_type
-                const actor = ev.profiles?.full_name || 'Someone'
+                const actor = ev.actor_label
                 const itemName = ev.equipment_items?.name || 'unknown item'
                 const qtyStr = ev.event_type === 'audit'
                   ? `${ev.quantity > 0 ? '+' : ''}${ev.quantity}`
