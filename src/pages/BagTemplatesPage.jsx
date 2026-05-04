@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
 import { friendlyError } from '../lib/errors'
 import { SkeletonList } from '../components/Skeleton'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 export default function BagTemplatesPage() {
   const { currentOrg, hasAnyRole, rolesLoading } = useOrg()
@@ -275,6 +276,7 @@ export default function BagTemplatesPage() {
 }
 
 function TemplateModal({ template, categories, sportTypes, divisions, equipmentItems, orgId, onDone, onClose }) {
+  const modalRef = useFocusTrap({ onClose })
   const { addToast } = useToast()
   const [name, setName] = useState(template?.name || '')
   const [sportTypeId, setSportTypeId] = useState(template?.sport_type_id || '')
@@ -358,9 +360,9 @@ function TemplateModal({ template, categories, sportTypes, divisions, equipmentI
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: '720px' }} onClick={e => e.stopPropagation()}>
+      <div ref={modalRef} className="modal" style={{ maxWidth: '720px' }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="bt-template-modal-title">
         <div className="modal-header">
-          <h2>{template ? 'Edit template' : 'Create a bag template'}</h2>
+          <h2 id="bt-template-modal-title">{template ? 'Edit template' : 'Create a bag template'}</h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="modal-form">
