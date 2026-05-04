@@ -89,7 +89,7 @@ export default function TreasurerPage() {
         {tab === 'overview' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--green-700)' }}>Income by Category</h2>
+              <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--green-700)' }}>Income by category</h2>
               {categories.filter(c => c.type === 'income').map(cat => {
                 const actual = transactions.filter(t => t.category_id === cat.id).reduce((s, t) => s + parseFloat(t.amount), 0)
                 return (
@@ -101,7 +101,7 @@ export default function TreasurerPage() {
               })}
             </div>
             <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', padding: '1.25rem' }}>
-              <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--red-500)' }}>Expenses by Category</h2>
+              <h2 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--red-500)' }}>Expenses by category</h2>
               {categories.filter(c => c.type === 'expense').map(cat => {
                 const actual = transactions.filter(t => t.category_id === cat.id).reduce((s, t) => s + parseFloat(t.amount), 0)
                 return (

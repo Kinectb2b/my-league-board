@@ -49,14 +49,21 @@ export default function SafetyPage() {
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+      {/* M-07 fix: standardise page-header to the shared .page-header /
+          .header-actions classes so the action button stacks below the
+          title consistently across all three tabs at <=768px (was wrapping
+          per-tab based on button-text length, producing inconsistent
+          mobile layouts between Incidents and Kits). */}
+      <div className="page-header">
         <div>
           <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Safety</h1>
           <p className="text-muted">Incident reports, background checks, and first aid</p>
         </div>
-        {canEdit && tab === 'incidents' && <button className="btn-primary" onClick={() => setShowAddIncident(true)}>+ Report incident</button>}
-        {canEdit && tab === 'checks' && <button className="btn-primary" onClick={() => setShowAddCheck(true)}>+ Add check</button>}
-        {canEdit && tab === 'kits' && <button className="btn-primary" onClick={() => setShowAddKit(true)}>+ Add kit</button>}
+        <div className="header-actions">
+          {canEdit && tab === 'incidents' && <button className="btn-primary" onClick={() => setShowAddIncident(true)}>+ Report incident</button>}
+          {canEdit && tab === 'checks' && <button className="btn-primary" onClick={() => setShowAddCheck(true)}>+ Add check</button>}
+          {canEdit && tab === 'kits' && <button className="btn-primary" onClick={() => setShowAddKit(true)}>+ Add kit</button>}
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -77,9 +84,12 @@ export default function SafetyPage() {
         ))}
       </div>
 
-      {/* Incidents tab */}
+      {/* Incidents tab — table-container wrapper (M-02 fix) gives the
+          table horizontal-scroll behaviour at narrow widths instead of
+          overflow:hidden's silent clip, and shares chrome with Checks +
+          Kits for visual parity. */}
       {tab === 'incidents' && (
-        <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+        <div className="table-container">
           {incidents.length === 0 ? (
             <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
               <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No incidents reported.</p>
@@ -108,9 +118,9 @@ export default function SafetyPage() {
         </div>
       )}
 
-      {/* Background Checks tab */}
+      {/* Background checks tab — same table-container wrapper as Incidents (M-02). */}
       {tab === 'checks' && (
-        <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
+        <div className="table-container">
           {checks.length === 0 ? (
             <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
               <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No background checks tracked yet.</p>
@@ -142,16 +152,21 @@ export default function SafetyPage() {
         </div>
       )}
 
-      {/* First Aid Kits tab */}
+      {/* First aid kits tab — empty state goes in .table-container so its
+          chrome matches Incidents + Checks tabs (DEV-42 fix); populated
+          state keeps the auto-fill grid layout for kit cards. */}
       {tab === 'kits' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
-          {kits.length === 0 ? (
+        kits.length === 0 ? (
+          <div className="table-container">
             <div className="empty-state" style={{ padding: '3rem', textAlign: 'center' }}>
               <p style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>No first aid kits tracked yet.</p>
               <p className="text-muted" style={{ marginBottom: canEdit ? '1.25rem' : 0 }}>Know which kits are where, when each was last inspected, and what's been used. Keeps the league ready and accountable.</p>
               {canEdit && <button className="btn-primary" onClick={() => setShowAddKit(true)}>+ Add your first kit</button>}
             </div>
-          ) : kits.map(kit => (
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
+            {kits.map(kit => (
             <div key={kit.id} style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', padding: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <div style={{ fontWeight: 600 }}>{kit.name}</div>
@@ -165,7 +180,8 @@ export default function SafetyPage() {
               {kit.next_inspection && <div style={{ fontSize: '0.75rem', marginTop: '0.15rem', color: new Date(kit.next_inspection) < new Date() ? 'var(--red-500)' : 'var(--gray-500)' }}>Next inspection: {new Date(kit.next_inspection).toLocaleDateString()}{new Date(kit.next_inspection) < new Date() ? ' ⚠️ OVERDUE' : ''}</div>}
             </div>
           ))}
-        </div>
+          </div>
+        )
       )}
 
       {/* Add Incident Modal */}
