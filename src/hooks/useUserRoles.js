@@ -14,7 +14,12 @@ export function useUserRoles(organizationId, userId) {
   useEffect(() => {
     if (!organizationId || !userId) {
       setRoles([])
-      setLoading(false)
+      // Stay loading. Flipping to false here lets consumers (route gates,
+      // role-aware UI) conclude "user has no roles" during the brief window
+      // between mount and currentOrg/user resolving — racing legitimate
+      // users into the no-roles fallback. ProtectedRoute redirects on auth
+      // before reaching the role check, so leaving loading=true while args
+      // are missing doesn't strand any logged-out path.
       return
     }
 
