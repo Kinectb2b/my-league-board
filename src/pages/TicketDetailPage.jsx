@@ -290,6 +290,7 @@ export default function TicketDetailPage() {
                 value={commentBody}
                 onChange={e => setCommentBody(e.target.value)}
                 placeholder="Add a comment..."
+                aria-label="Comment"
                 rows={3}
                 style={{ padding: '0.6rem 0.75rem', border: '1.5px solid var(--gray-200)', borderRadius: 'var(--radius)', fontSize: '0.9rem', fontFamily: 'inherit', resize: 'vertical' }}
               />

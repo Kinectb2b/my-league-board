@@ -161,7 +161,7 @@ export default function TicketsPage() {
                 const stc = STATUS_COLORS[ticket.status] || STATUS_COLORS.open
                 return (
                   <tr key={ticket.id} onClick={() => navigate(`/tickets/${ticket.id}`)} style={{ cursor: 'pointer' }}>
-                    <td><span style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: pc.dot }} title={ticket.priority} /></td>
+                    <td><span role="img" aria-label={`Priority: ${ticket.priority}`} title={ticket.priority} style={{ display: 'inline-block', width: '10px', height: '10px', borderRadius: '50%', background: pc.dot }} /></td>
                     <td><strong style={{ fontSize: '0.9rem' }}>{ticket.title}</strong></td>
                     <td><span className="badge" style={{ backgroundColor: 'var(--gray-100)', color: 'var(--gray-600)', fontSize: '0.7rem' }}>{tc?.icon} {tc?.label || ticket.ticket_type}</span></td>
                     <td><span className="badge" style={{ backgroundColor: stc.bg, color: stc.text }}>{ticket.status.replace('_', ' ')}</span></td>

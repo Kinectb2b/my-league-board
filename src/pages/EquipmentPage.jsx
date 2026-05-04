@@ -127,6 +127,15 @@ export default function EquipmentPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
+  useEffect(() => {
+    if (!openActionMenu) return
+    function handleEsc(e) {
+      if (e.key === 'Escape') setOpenActionMenu(null)
+    }
+    window.addEventListener('keydown', handleEsc)
+    return () => window.removeEventListener('keydown', handleEsc)
+  }, [openActionMenu])
+
   async function fetchAll() {
     setLoading(true)
     const orgId = currentOrg.id
@@ -528,15 +537,15 @@ export default function EquipmentPage() {
                             <div className="eq-action-menu-wrap">
                               <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setOpenActionMenu(openActionMenu === item.id ? null : item.id) }} aria-label={`Actions for ${item.name}`} aria-haspopup="menu" aria-expanded={openActionMenu === item.id} title="Actions">⋯</button>
                               {openActionMenu === item.id && (
-                                <div className="eq-action-dropdown" onClick={e => e.stopPropagation()}>
-                                  <button onClick={() => { setReceiveItem(item); setOpenActionMenu(null) }}>+ Receive</button>
-                                  <button onClick={() => { setTransferItem(item); setOpenActionMenu(null) }}>→ Transfer</button>
-                                  <button onClick={() => { setRemoveItem(item); setOpenActionMenu(null) }}>− Remove</button>
-                                  <button onClick={() => { setAuditItem(item); setOpenActionMenu(null) }}>☑ Audit</button>
-                                  <button onClick={() => { setHistoryItem(item); setOpenActionMenu(null) }}>↕ History</button>
-                                  <button onClick={() => { setOpenActionMenu(null); navigate(`/tickets/new?equipment_item_id=${item.id}`) }}>🎫 Report issue</button>
-                                  <div className="eq-action-divider" />
-                                  <button className="eq-action-danger" onClick={() => { deleteItem(item.id); setOpenActionMenu(null) }}>✕ Delete</button>
+                                <div className="eq-action-dropdown" role="menu" aria-orientation="vertical" onClick={e => e.stopPropagation()}>
+                                  <button role="menuitem" onClick={() => { setReceiveItem(item); setOpenActionMenu(null) }}>+ Receive</button>
+                                  <button role="menuitem" onClick={() => { setTransferItem(item); setOpenActionMenu(null) }}>→ Transfer</button>
+                                  <button role="menuitem" onClick={() => { setRemoveItem(item); setOpenActionMenu(null) }}>− Remove</button>
+                                  <button role="menuitem" onClick={() => { setAuditItem(item); setOpenActionMenu(null) }}>☑ Audit</button>
+                                  <button role="menuitem" onClick={() => { setHistoryItem(item); setOpenActionMenu(null) }}>↕ History</button>
+                                  <button role="menuitem" onClick={() => { setOpenActionMenu(null); navigate(`/tickets/new?equipment_item_id=${item.id}`) }}>🎫 Report issue</button>
+                                  <div className="eq-action-divider" role="separator" />
+                                  <button role="menuitem" className="eq-action-danger" onClick={() => { deleteItem(item.id); setOpenActionMenu(null) }}>✕ Delete</button>
                                 </div>
                               )}
                             </div>

@@ -205,7 +205,7 @@ function PositionCard({ position, canEdit, pendingInvite, onSelect, onInvite }) 
             overflow: 'hidden'
           }}>
             {pos.profiles?.avatar_url
-              ? <img src={pos.profiles.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ? <img src={pos.profiles.avatar_url} alt={`Profile photo of ${pos.profiles?.full_name || 'unknown member'}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               : (pos.profiles?.full_name || '?').charAt(0).toUpperCase()}
           </div>
           <div style={{ minWidth: 0 }}>
