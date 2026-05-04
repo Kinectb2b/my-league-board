@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { fetchCoachTeams } from '../lib/coachTeams'
 import { useToast } from '../components/Toast'
+import EmailStatusChip from '../components/EmailStatusChip'
 import { useUserRoles } from '../hooks/useUserRoles'
 import { logActivity } from '../lib/activity'
 import { STATUS_COLORS, getTicketTypeConfig, PRIORITY_COLORS } from '../lib/ticketRouting'
@@ -529,6 +530,7 @@ function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [inviteLink, setInviteLink] = useState(null)
+  const [emailStatus, setEmailStatus] = useState(null) // 'pending' | 'sent' | 'failed'
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -567,10 +569,11 @@ function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
 
     const link = `${window.location.origin}/accept-invite?token=${data.token}`
     setInviteLink(link)
+    setEmailStatus('pending')
+    setSubmitting(false)
 
     logActivity(orgId, 'coach invitation sent', 'team', team.name, `Invited ${fullName || email} as assistant coach`)
 
-    // Send invitation email
     const { data: emailResult, error: emailError } = await supabase.functions.invoke(
       'send-invitation-email',
       { body: { invitation_id: data.id } }
@@ -578,12 +581,10 @@ function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
 
     if (emailError || !emailResult?.success) {
       console.error('Email send failed', emailError || emailResult)
-      addToast('Invitation created but email failed to send. Share the link manually.', 'warning')
+      setEmailStatus('failed')
     } else {
-      addToast(`Invitation sent to ${email}`)
+      setEmailStatus('sent')
     }
-
-    setSubmitting(false)
   }
 
   async function copyLink() {
@@ -601,7 +602,7 @@ function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
           <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>
             Share this link with {fullName || email} to join as an assistant coach for {team.name}:
           </p>
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <input
               readOnly
               value={inviteLink}
@@ -610,7 +611,8 @@ function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
             />
             <button className="btn-primary" onClick={copyLink} style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>Copy</button>
           </div>
-          <p className="text-muted" style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+          <EmailStatusChip status={emailStatus} email={email} recipient={fullName || email} />
+          <p className="text-muted" style={{ fontSize: '0.8rem', margin: '0.75rem 0 1rem' }}>
             This link expires in 7 days. The invitee will need to sign up or sign in to accept.
           </p>
           <button className="btn-secondary" onClick={onClose} style={{ width: '100%' }}>Done</button>

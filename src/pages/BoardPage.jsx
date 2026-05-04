@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/Toast'
+import EmailStatusChip from '../components/EmailStatusChip'
 import { friendlyError } from '../lib/errors'
 import { logActivity } from '../lib/activity'
 import { groupPositions, getRolesForPosition } from '../lib/boardPositionRoles'
@@ -362,6 +363,7 @@ function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClos
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState(null)
   const [inviteLink, setInviteLink] = useState(null)
+  const [emailStatus, setEmailStatus] = useState(null) // 'pending' | 'sent' | 'failed'
 
   const allRoleOptions = [
     { value: 'admin', label: 'Admin' },
@@ -426,10 +428,11 @@ function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClos
 
     const link = `${window.location.origin}/accept-invite?token=${data.token}`
     setInviteLink(link)
+    setEmailStatus('pending')
+    setSubmitting(false)
 
     logActivity(orgId, 'invitation sent', 'member', fullName || email, selectedPos?.title || null)
 
-    // Send invitation email via Edge Function
     const { data: emailResult, error: emailError } = await supabase.functions.invoke(
       'send-invitation-email',
       { body: { invitation_id: data.id } }
@@ -437,12 +440,10 @@ function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClos
 
     if (emailError || !emailResult?.success) {
       console.error('Email send failed', emailError || emailResult)
-      addToast('Invitation created but email failed to send. Share the link manually.', 'warning')
+      setEmailStatus('failed')
     } else {
-      addToast(`Invitation sent to ${email}`)
+      setEmailStatus('sent')
     }
-
-    setSubmitting(false)
   }
 
   async function copyLink() {
@@ -477,7 +478,8 @@ function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClos
               />
               <button className="btn-primary" onClick={copyLink} style={{ whiteSpace: 'nowrap' }}>Copy</button>
             </div>
-            <p className="text-muted" style={{ fontSize: '0.75rem' }}>
+            <EmailStatusChip status={emailStatus} email={email} recipient={fullName || email} />
+            <p className="text-muted" style={{ fontSize: '0.75rem', marginTop: '0.75rem' }}>
               This link expires in 7 days. The invitee will need to sign up or sign in to accept.
             </p>
             <div className="modal-actions" style={{ marginTop: '1rem' }}>
