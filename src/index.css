@@ -871,6 +871,23 @@ body {
 
   .form-row { flex-direction: column; }
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* M-03 fix: bump icon-button tap targets to HIG 44pt floor on touch
+     devices only. .btn-icon covers every modal-close X + mobile overlay
+     closes; .btn-icon-sm covers row-action pencils/duplicates/X's
+     defined locally in BagTemplatesPage + TeamBagDetailPage (KitBuilder
+     is an orphan per audit DEV-10). Both were ~22-28px tall pre-fix.
+     min-width / min-height plus inline-flex centering preserves the
+     visible icon size while expanding the hit area; modal-header and
+     table rows stay quiet because their existing align-items: center
+     keeps the icon visually centered inside the 44px box. */
+  .btn-icon, .btn-icon-sm {
+    min-width: 44px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
 }
 
 @media (min-width: 769px) {
