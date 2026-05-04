@@ -196,6 +196,14 @@ Three findings weren't reached during the empirical pass; static analysis stands
 - **A-06** BoardPage avatar `alt=""` decorative-only on a content image
 - **A-07** TicketsPage priority dot color-only (`title` attr, no accessible name)
 
+### New finding (from Cluster 3 verification — application modals)
+
+**A-11 (POLISH) — Modals throughout the app don't dismiss on Escape.** Surfaced during Cluster 3 OPS-02 keyboard-nav verification (2026-05-04). Procedure: opened Edit template modal on `/bag-templates` via Enter on focused `.bt-card-trigger`, pressed Escape — modal stayed open; had to mouse-click the X to close. Same family as A-09 (Escape dismiss missing on Equipment Actions menu) but at the **application-modal** level rather than the menu level. WAI-ARIA modal-dialog pattern requires Esc to close, and WCAG 2.1.1 (Keyboard) is failed for modal dismissal — keyboard-only users can open modals but cannot dismiss via keyboard.
+
+**Bundling:** travels with A-05 (modal focus restoration) into Cluster 5 — both are "modal keyboard handling" structural fixes that probably want a single `useFocusTrap` hook or `<Modal>` wrapper component to address comprehensively. Splitting A-05 from A-11 would mean two passes over the same modals; bundling is cleaner. **Do NOT bundle into Cluster 4** (Cluster 4 stays scoped as A-04 + A-06 + A-07 + A-09 + A-10).
+
+---
+
 ### New findings (from Cluster 2 verification — Equipment Actions ⋯ menu)
 
 Surfaced while doing Layer 1B aria-expanded toggle verification on the Actions ⋯ button in `EquipmentPage`. Both POLISH; both deferred to Cluster 4 (do **not** block Cluster 3).
