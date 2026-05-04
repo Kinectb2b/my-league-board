@@ -4,6 +4,7 @@ import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/Toast'
 import { friendlyError } from '../lib/errors'
+import { formatRoleLabel, PRIMARY_MEMBER_ROLES } from '../lib/roles'
 import { logActivity } from '../lib/activity'
 
 export default function MembersPage() {
@@ -62,15 +63,6 @@ export default function MembersPage() {
     if (!confirm(`Remove ${member.profiles?.full_name || member.profiles?.email}? They will lose access to this league.`)) return
     const { error } = await supabase.from('organization_members').delete().eq('id', member.id)
     if (!error) { addToast('Member removed'); logActivity(currentOrg.id, 'member removed', 'member', member.profiles?.full_name); fetchAll() }
-  }
-
-  const roleLabels = {
-    admin: 'President / Admin',
-    equipment_manager: 'Equipment Manager',
-    safety_officer: 'Safety Officer',
-    coach: 'Coach',
-    board_member: 'Board Member',
-    volunteer: 'Volunteer'
   }
 
   if (loading) return (
@@ -147,15 +139,12 @@ export default function MembersPage() {
                     <td>
                       {canEdit && m.profile_id !== user.id ? (
                         <select value={m.role} onChange={e => changeRole(m.id, e.target.value)} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', fontFamily: 'inherit', background: 'white' }}>
-                          <option value="admin">President / Admin</option>
-                          <option value="equipment_manager">Equipment Manager</option>
-                          <option value="safety_officer">Safety Officer</option>
-                          <option value="coach">Coach</option>
-                          <option value="board_member">Board Member</option>
-                          <option value="volunteer">Volunteer</option>
+                          {PRIMARY_MEMBER_ROLES.map(role => (
+                            <option key={role} value={role}>{formatRoleLabel(role)}</option>
+                          ))}
                         </select>
                       ) : (
-                        <span style={{ fontSize: '0.8rem' }}>{roleLabels[m.role] || m.role}{m.profile_id === user.id ? ' (You)' : ''}</span>
+                        <span style={{ fontSize: '0.8rem' }}>{formatRoleLabel(m.role)}{m.profile_id === user.id ? ' (You)' : ''}</span>
                       )}
                     </td>
                     <td style={{ textAlign: 'right' }}>
@@ -288,7 +277,7 @@ function AddMemberModal({ orgId, onClose, onAdded }) {
         details: `Added as ${role}`
       })
 
-      addToast(`${fullName} added as ${role}. Temp password: ${password}`, 'success')
+      addToast(`${fullName} added as ${formatRoleLabel(role)}. Temp password: ${password}`, 'success')
       onAdded()
       onClose()
     } catch (err) {

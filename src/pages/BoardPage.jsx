@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/Toast'
 import EmailStatusChip from '../components/EmailStatusChip'
 import { friendlyError } from '../lib/errors'
+import { formatRoleLabel } from '../lib/roles'
 import { logActivity } from '../lib/activity'
 import { groupPositions, getRolesForPosition } from '../lib/boardPositionRoles'
 
@@ -365,23 +366,17 @@ function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClos
   const [inviteLink, setInviteLink] = useState(null)
   const [emailStatus, setEmailStatus] = useState(null) // 'pending' | 'sent' | 'failed'
 
+  // Order is intentional UX: admin first, then coach, then board roles
+  // by responsibility, with general board_member / volunteer at the end.
+  // Labels resolved through formatRoleLabel so admin renders consistently
+  // as "President / Admin" (matches MembersPage role selector).
   const allRoleOptions = [
-    { value: 'admin', label: 'Admin' },
-    { value: 'coach', label: 'Coach' },
-    { value: 'division_vp', label: 'Division VP' },
-    { value: 'treasurer', label: 'Treasurer' },
-    { value: 'equipment_manager', label: 'Equipment Manager' },
-    { value: 'safety_officer', label: 'Safety Officer' },
-    { value: 'field_manager', label: 'Field Manager' },
-    { value: 'uniform_manager', label: 'Uniform Manager' },
-    { value: 'scheduling_manager', label: 'Scheduling Manager' },
-    { value: 'registration_manager', label: 'Registration Manager' },
-    { value: 'player_agent', label: 'Player Agent' },
-    { value: 'umpire_coordinator', label: 'Umpire Coordinator' },
-    { value: 'sponsorship_coordinator', label: 'Sponsorship Coordinator' },
-    { value: 'board_member', label: 'Board Member' },
-    { value: 'volunteer', label: 'Volunteer' },
-  ]
+    'admin', 'coach', 'division_vp', 'treasurer', 'equipment_manager',
+    'safety_officer', 'field_manager', 'uniform_manager',
+    'scheduling_manager', 'registration_manager', 'player_agent',
+    'umpire_coordinator', 'sponsorship_coordinator', 'board_member',
+    'volunteer',
+  ].map(value => ({ value, label: formatRoleLabel(value) }))
 
   function toggleRole(role) {
     setExtraRoles(prev =>
