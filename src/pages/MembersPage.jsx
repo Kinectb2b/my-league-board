@@ -129,31 +129,43 @@ export default function MembersPage() {
         <div>
           <h2 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: '0.75rem', color: 'var(--gray-700)' }}>All members</h2>
           <div style={{ background: 'white', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-            <table className="data-table" style={{ marginBottom: 0 }}>
-              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead>
+            <table className="data-table mp-members-table" style={{ marginBottom: 0 }}>
+              <thead><tr><th>Name</th><th>Email</th><th>Role</th><th className="mp-remove-col"></th></tr></thead>
               <tbody>
-                {members.map(m => (
-                  <tr key={m.id}>
-                    <td style={{ fontWeight: 500 }}>{m.profiles?.full_name || '—'}</td>
-                    <td>{m.profiles?.email}</td>
-                    <td>
-                      {canEdit && m.profile_id !== user.id ? (
-                        <select value={m.role} onChange={e => changeRole(m.id, e.target.value)} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', fontFamily: 'inherit', background: 'white' }}>
-                          {PRIMARY_MEMBER_ROLES.map(role => (
-                            <option key={role} value={role}>{formatRoleLabel(role)}</option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span style={{ fontSize: '0.8rem' }}>{formatRoleLabel(m.role)}{m.profile_id === user.id ? ' (You)' : ''}</span>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      {canEdit && m.profile_id !== user.id && (
-                        <button onClick={() => removeMember(m)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-500)', fontSize: '0.8rem' }}>Remove</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {members.map(m => {
+                  const canRemove = canEdit && m.profile_id !== user.id
+                  return (
+                    <tr key={m.id}>
+                      <td style={{ fontWeight: 500 }}>{m.profiles?.full_name || '—'}</td>
+                      <td>{m.profiles?.email}</td>
+                      <td>
+                        {canEdit && m.profile_id !== user.id ? (
+                          <select value={m.role} onChange={e => changeRole(m.id, e.target.value)} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', fontFamily: 'inherit', background: 'white' }}>
+                            {PRIMARY_MEMBER_ROLES.map(role => (
+                              <option key={role} value={role}>{formatRoleLabel(role)}</option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span style={{ fontSize: '0.8rem' }}>{formatRoleLabel(m.role)}{m.profile_id === user.id ? ' (You)' : ''}</span>
+                        )}
+                        {/* Mobile-only inline Remove — desktop renders it in the
+                            4th column (hidden at <=768px via CSS). M-04 fix. */}
+                        {canRemove && (
+                          <button
+                            type="button"
+                            onClick={() => removeMember(m)}
+                            className="mp-remove-mobile"
+                          >Remove</button>
+                        )}
+                      </td>
+                      <td className="mp-remove-col" style={{ textAlign: 'right' }}>
+                        {canRemove && (
+                          <button onClick={() => removeMember(m)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--red-500)', fontSize: '0.8rem' }}>Remove</button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -200,6 +212,38 @@ export default function MembersPage() {
             onAdded={fetchAll}
           />
         )}
+
+        <style>{`
+          /* M-04 fix. The All-members table renders a 4th column with the
+             Remove action on desktop; at <=768px the table can't fit 4 cols
+             without horizontal-scrolling past the parent's overflow:hidden,
+             which clipped the Remove action with no recovery. Mobile drops
+             the 4th column and inlines a Remove button under the role
+             select instead. */
+          .mp-remove-mobile { display: none; }
+          @media (max-width: 768px) {
+            .mp-members-table { min-width: 0; }
+            .mp-remove-col { display: none; }
+            .mp-remove-mobile {
+              display: inline-flex;
+              align-items: center;
+              margin-top: 0.5rem;
+              padding: 0.4rem 0.75rem;
+              background: none;
+              border: 1px solid var(--gray-200);
+              border-radius: var(--radius);
+              color: var(--red-500);
+              font-size: 0.8rem;
+              font-family: inherit;
+              cursor: pointer;
+              min-height: 36px;
+            }
+            .mp-remove-mobile:hover, .mp-remove-mobile:active {
+              background: var(--red-100);
+              border-color: var(--red-100);
+            }
+          }
+        `}</style>
     </>
   )
 }

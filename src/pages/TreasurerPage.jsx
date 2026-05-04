@@ -65,8 +65,10 @@ export default function TreasurerPage() {
           {canEdit && tab === 'sponsors' && <button className="btn-primary" onClick={() => setShowAddSponsor(true)}>+ Add sponsor</button>}
         </div>
 
-        {/* Summary cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        {/* Summary cards — using shared .stats-grid (auto-fit minmax(160px, 1fr)
+            on desktop, repeat(2, 1fr) at <=768px) so the 4-card row collapses
+            to a 2x2 grid on mobile instead of overflowing the viewport (M-05). */}
+        <div className="stats-grid" style={{ marginBottom: '1.5rem' }}>
           <div className="stat-card"><div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--green-600)' }}>{fmt(totalIncome)}</div><div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--gray-500)', marginTop: '0.25rem' }}>Total Income</div></div>
           <div className="stat-card"><div style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--red-500)' }}>{fmt(totalExpenses)}</div><div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--gray-500)', marginTop: '0.25rem' }}>Total Expenses</div></div>
           <div className="stat-card"><div style={{ fontSize: '1.5rem', fontWeight: 700, color: balance >= 0 ? 'var(--green-600)' : 'var(--red-500)' }}>{fmt(balance)}</div><div style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--gray-500)', marginTop: '0.25rem' }}>Balance</div></div>
