@@ -196,6 +196,22 @@ Three findings weren't reached during the empirical pass; static analysis stands
 - **A-06** BoardPage avatar `alt=""` decorative-only on a content image
 - **A-07** TicketsPage priority dot color-only (`title` attr, no accessible name)
 
+### New finding (from Cluster 5 batch 2a verification — Session 12)
+
+**A-16 (POLISH) — `useFocusTrap` focus restoration is a no-op for non-focusable triggers; clickable-div triggers contaminate downstream focus chains.** Surfaced during Cluster 5 batch 2a verification (Session 12). When a modal is opened by a clickable `<div>` (without `tabindex`), the hook correctly snapshots `document.activeElement` as the trigger, but the cleanup's `trigger.focus()` is a no-op because `<div>` without `tabindex` is not focusable. Focus falls to `<body>` instead.
+
+**Affected pattern:** `BoardPage` `PositionCard` at line 168 — `<div onClick={onSelect}>` (not a `<button>`). Confirmed empirically: opening `PositionDetailModal` then pressing Escape leaves `document.activeElement === body`.
+
+**Downstream contamination:** when a clickable-div modal flow hands off to another modal (e.g., PositionCard → PositionDetailModal → "Send invitation" button click → InviteModal), the focus chain is already polluted by the upstream `<div>` failure. InviteModal's hook snapshots `body` as its trigger (because PositionDetailModal's cleanup couldn't restore to PositionCard), so InviteModal's own close also lands on body. Not a separate hook bug; same root cause one level upstream.
+
+**Relationship to A-03:** A-03 (Cluster 3, Session 11) closed clickable-div conversions for EquipmentDashboard / Locations / BagTemplates — 11 sites total. A-03's site list explicitly did not include BoardPage. A-16 extends the same fix-shape to BoardPage `PositionCard`. **Fix:** convert `<div>` to `<button>` with the same button-reset CSS pattern used in Cluster 3 (`background: transparent; border: none; text-align: left; font: inherit; color: inherit; cursor: pointer; width: 100%`), preserving visual styling. Same per-site shape, ~5 lines per affected site.
+
+**Watch item — TreasurerPage `+ Add transaction` anomaly.** During the same verification round, focus-restore also failed on TreasurerPage `AddTransactionModal` close, even though the trigger IS a `<button>` (`src/pages/TreasurerPage.jsx:65`). The button is conditionally rendered: `{canEdit && tab === 'transactions' && <button>...}`. The modal's `onClose` fires `fetchAll()` which triggers a re-render. **Hypothesis:** if React briefly unmounts/remounts the button during the close cycle, the snapshotted `triggerRef.current` becomes detached and `document.body.contains(trigger)` returns false during cleanup. **Status:** needs diagnostic reproduction before filing as a separate audit ID. Recommend a `console.log(triggerRef.current, document.body.contains(triggerRef.current))` shim in the cleanup function during a debug session. If the trigger is genuinely detached at cleanup time, the hook needs a re-find mechanism (e.g., accept a `triggerSelector` arg or a callback to query the DOM at cleanup time). If the trigger is intact, this is a verification-methodology artifact (e.g., the async `fetchAll()` settling moved focus elsewhere after the cleanup ran). Either outcome is informative; the diagnostic is cheap.
+
+Surfaced during: Cluster 5 batch 2a verification (Session 12).
+
+---
+
 ### New findings (from Cluster 5 batch 2 read-pass — Session 12)
 
 **A-13 (POLISH) — MembersPage assign-position is inline JSX, not a function component.** `src/pages/MembersPage.jsx:174-205` renders the assignment modal inline within MembersPage's render (gated by `{assigningPosition && ...}`). Adopting `useFocusTrap` from MembersPage's top-level fires the hook once on `/members` mount when modal isn't open; the early-return on missing container prevents listener registration. **Fix:** extract into `<AssignPositionModal>` component with normal mount/unmount lifecycle (~30-line refactor), then adopt `useFocusTrap` as standard. Skipped in Cluster 5 batch 2; refactor + adopt as standalone follow-up commit. Surfaced during: Cluster 5 batch 2 read-pass (Session 12).
