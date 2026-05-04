@@ -216,6 +216,12 @@ Surfaced while doing Layer 1B aria-expanded toggle verification on the Actions �
 
 ---
 
+### New finding (from Cluster 4 verification — NewTicketPage form)
+
+**A-12 (POLISH) — `/tickets/new` `<textarea>` Description field not associated with its `<label>`.** The NewTicketPage Description field renders a `<label>Description</label>` adjacent to a `<textarea>` but the two are not associated via `for`/`id` or `aria-labelledby`. Screen reader users may pick up the label via proximity, but explicit association is the WCAG-recommended pattern. Different surface and different a11y issue than A-04 (which was the TicketDetailPage *comment* textarea, fixed via `aria-label="Comment"`). Single-line fix: add a matching `id` on the textarea + `htmlFor=` on the label, or add `aria-labelledby`. Surfaced during Session 11 Cluster 4 verification (2026-05-04). **Bundle with Cluster 5** if structurally adjacent (modal-vs-form-validation), otherwise its own small commit in Session 12.
+
+---
+
 ### New finding (from empirical walk only)
 
 **A-08 — DOWNGRADED from static-analysis "watch flag" to PASSING.** Static analysis flagged custom focus styles where `outline: none` is replaced by border-color or box-shadow. Empirical pass confirms: focus indicators on `/dashboard` "View teams →" link, `/dashboard` "Storage locations" Quick action card, and `/locations` location-card pencil button all show clearly visible focus rings (yellow-orange or blue, high contrast). No suppressed outlines. Move A-08 from "watch" to "passing." (Re-flag later only if a custom focus style we add ends up obscured.)
