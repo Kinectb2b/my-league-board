@@ -245,3 +245,106 @@ Empirically-informed cluster order:
 **Cluster 5 (defer or own session) — A-05 modal focus restoration.** Structural fix (`useFocusTrap` hook or library). Big enough to deserve isolation.
 
 Hand back to triage flow. Cluster 1 is up next.
+
+---
+
+## Session 11 close-out (2026-05-04)
+
+### Shipped this session
+
+**9 a11y findings closed across 5 polish + 4 doc commits, plus OPS-02 working-rule.**
+
+| ID | Cluster | Surface |
+|---|---|---|
+| A-01 hamburger | Cluster 1 | `Sidebar.jsx` mobile hamburger `aria-label="Open menu" aria-expanded` |
+| A-02 toast | Cluster 1 | `Toast.jsx` `aria-live` + per-toast `role="status"`/`role="alert"` |
+| A-01 broader sweep | Cluster 2 | ~50 modal-close ✕ + row-action icon buttons across 16 routes (172 labeled / 0 unlabeled) |
+| A-01 EquipmentPage extension | Cluster 2 | `/equipment` row actions + Actions ⋯ menu (138-site coverage gap closed) |
+| A-03 clickable divs/spans | Cluster 3 | `bt-card` regression + 7 EquipmentDashboard surfaces + 2 LocationsPage surfaces — converted to semantic `<button>` / `<Link>` |
+| A-04 textarea label | Cluster 4 | TicketDetailPage comment textarea `aria-label="Comment"` |
+| A-06 avatar alt | Cluster 4 | BoardPage avatar `alt="Profile photo of {name}"` |
+| A-07 priority dot | Cluster 4 | TicketsPage priority dot `role="img"` + `aria-label="Priority: {level}"` |
+| A-09 menu Esc dismiss | Cluster 4 | EquipmentPage Actions ⋯ menu — `useEffect` Escape handler |
+| A-10 menu role/menuitem | Cluster 4 | EquipmentPage Actions ⋯ popup — `role="menu"` + `aria-orientation="vertical"` + `role="menuitem"` × 7 + `role="separator"` |
+| OPS-02 | Working rule | Keyboard-nav verification step on layout work — filed in `AUDIT_REPORT.md` |
+
+### Verified empirically (live DOM + behavioral)
+
+- **A-01** — DOM + VoiceOver (y/y/y), all 16 routes 0 unlabeled
+- **A-02** — DOM (role/aria-live attributes) + VoiceOver (toast announcement)
+- **A-03** — DOM (tagName: BUTTON / A) + keyboard nav (bt-card Tab + Enter activates modal)
+- **A-09** — DOM (aria-expanded toggle) + behavioral (Esc closes) + rapid menu-switch (effect cleanup chain works)
+- **A-10** — DOM (`role="menu"`, 7 × `role="menuitem"`, 1 × `role="separator"`)
+
+### Code-review carries (data-state blocked, not empirically verified)
+
+These three Cluster 4 fixes are committed and code-reviewed but couldn't be live-verified during the session because Demotte didn't have the data state to render them:
+
+- **A-04** TicketDetailPage textarea `aria-label` — 0 tickets in Demotte
+- **A-06** BoardPage avatar `alt` — no profile photos uploaded (only initial-letter fallbacks render)
+- **A-07** TicketsPage priority dot `aria-label` — 0 tickets
+
+The audit doc reflects this honestly. Empirical confirmation lands the next time these surfaces have data (organic encounter or test data seed).
+
+### Deferred to Session 12
+
+**Cluster 5 — Modal keyboard handling (A-05 + A-11) bundled.**
+
+Architecture: `useFocusTrap` hook (Option A from Session 11 close-out architecture sketch). Pilot-then-sweep cadence.
+
+Why hook over wrapper component:
+- Purely additive — modals adopt opt-in; no risk of breaking ones that don't adopt yet
+- 53 modal sites already have hand-rolled overlay/stop-propagation boilerplate; consolidating that is a *separate* refactor not load-bearing for WCAG
+- Pilot-then-sweep gives natural halt-cadence checkpoints (one structural review, one mechanical sweep)
+
+**Hook signature for Session 12 (refined):**
+
+```js
+const modalRef = useFocusTrap({ onClose })
+// returns ref to attach to .modal container.
+// Internally:
+//   - on mount: snapshot document.activeElement, focus first focusable inside container
+//   - listen for Escape (calls onClose) and Tab (cycles within container)
+//   - on unmount: restore focus to snapshotted trigger
+```
+
+**`isOpen` parameter dropped.** Demotte's existing modals all unmount when closed (state-driven render), so the parameter has no current consumer. Trust callers to only invoke from inside an open modal's render tree. Cleaner API. If a future "always-rendered modal toggled via CSS" pattern arrives, add the parameter then.
+
+**Per-site change shape (~5 lines):**
+
+```diff
++ import { useFocusTrap } from '../hooks/useFocusTrap'
+  function MyModal({ onClose }) {
++   const modalRef = useFocusTrap({ onClose })
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+-       <div className="modal" onClick={e => e.stopPropagation()}>
++       <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true">
+```
+
+**Session 12 commit plan:**
+1. Pilot — new `src/hooks/useFocusTrap.js` (~70 lines) + BagTemplatesPage TemplateModal adoption (~5 lines). The bt-card regression's downstream modal is the canonical OPS-02 verification surface — best pilot site. Halt for verification.
+2. Sweep — remaining ~52 modal sites across 15 files. Halt for verification.
+3. Doc — A-05 + A-11 closure notes; A-12 may bundle here if structurally adjacent.
+
+**Modal landscape inventory (from Session 11 close-out grep):**
+- 53 sites total: BoardPage 3, BagTemplatesPage 1, CategoriesPage 1, AssignmentsPage 1, MembersPage 2, KitBuilderPage 5 (4 inline single-line), FieldsPage 1, LocationsPage 4, SettingsPage 1, MyTeamPage 2, EquipmentPage 8, SafetyPage 3, TeamBagDetailPage 4, TreasurerPage 2, TeamsPage 14, TeamBagsPage 1.
+- All hand-rolled with the same `<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}>` boilerplate.
+- No existing shared `<Modal>` component.
+
+### Carry-forward to Session 12 or beyond
+
+- **A-12** (NewTicketPage label-textarea association) — single-line fix, can bundle with Cluster 5 sweep or its own small commit.
+
+### Methodology disclosure (transferable to Session 12)
+
+Three-layer verification pattern used this session:
+1. **DOM inspection** (driven by Claude or user via JS console) — viewport-independent, catches missing aria attrs / role values / structural shape
+2. **Behavioral keyboard nav** (driven by user) — Tab order, focus visibility, Enter/Space activation, Escape dismissal, focus restoration
+3. **VoiceOver/AT** (driven by user, often non-blocking) — announcement quality, name-as-spoken, reading order
+
+Layer 1 + Layer 2 caught all five Cluster 4 failure modes that Layer 3 would catch. VO is a confirmation pass, not a gating pass. Where data-state blocks empirical verification (A-04 / A-06 / A-07 in this session), code-review carries are honest — log them in the audit doc rather than silently treating committed-as-verified.
+
+### Final session 11 commit count
+
+5 polish commits + 6 doc commits = **11 net commits**. 9 a11y findings closed live, OPS-02 process rule filed, A-12 carryforward filed, Cluster 5 architecture and pilot site documented in advance for Session 12.
