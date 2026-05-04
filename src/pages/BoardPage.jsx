@@ -253,7 +253,7 @@ function PositionDetailModal({ position, members, pendingInvite, canEdit, onClos
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
         <div className="modal-header">
           <h2>{pos.title}</h2>
-          <button className="btn-icon" onClick={onClose}>&times;</button>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">&times;</button>
         </div>
         <div className="modal-form">
           {pos.description && (
@@ -457,7 +457,7 @@ function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClos
         <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
           <div className="modal-header">
             <h2>Invitation created</h2>
-            <button className="btn-icon" onClick={onSent}>&times;</button>
+            <button className="btn-icon" onClick={onSent} aria-label="Close">&times;</button>
           </div>
           <div className="modal-form">
             <p style={{ marginBottom: '0.75rem', color: 'var(--gray-600)' }}>
@@ -491,7 +491,7 @@ function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClos
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
         <div className="modal-header">
           <h2>Invite to board</h2>
-          <button className="btn-icon" onClick={onClose}>&times;</button>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">&times;</button>
         </div>
         <form onSubmit={handleSubmit} className="modal-form">
           {error && <div className="form-error">{error}</div>}

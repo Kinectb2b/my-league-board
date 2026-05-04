@@ -230,9 +230,9 @@ export default function LocationsPage() {
                         {loc.location_type && !loc.is_supply_room && <span className="badge badge-neutral" style={{ marginLeft: '0.5rem' }}>{loc.location_type}</span>}
                       </div>
                       {canEdit && <div className="loc-card-actions">
-                        <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); toggleSupplyRoom(loc.id, loc.is_supply_room) }} title="Toggle supply room" style={{ color: loc.is_supply_room ? 'var(--gold-500)' : undefined }}>★</button>
-                        <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setEditingLocation(loc) }} title="Edit">✎</button>
-                        <button className="btn-icon-sm btn-icon-danger" onClick={e => { e.stopPropagation(); deleteLocation(loc.id) }} title="Delete">✕</button>
+                        <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); toggleSupplyRoom(loc.id, loc.is_supply_room) }} aria-label={`Toggle supply room for ${loc.name}`} title="Toggle supply room" style={{ color: loc.is_supply_room ? 'var(--gold-500)' : undefined }}>★</button>
+                        <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setEditingLocation(loc) }} aria-label={`Edit ${loc.name}`} title="Edit">✎</button>
+                        <button className="btn-icon-sm btn-icon-danger" onClick={e => { e.stopPropagation(); deleteLocation(loc.id) }} aria-label={`Delete ${loc.name}`} title="Delete">✕</button>
                       </div>}
                     </div>
                     {loc.description && <p className="text-muted" style={{ fontSize: '0.8rem', marginTop: '0.25rem' }}>{loc.description}</p>}
@@ -314,7 +314,7 @@ export default function LocationsPage() {
                                   : overstocked ? <span className="badge badge-over">Over by {currentQty - currentTarget}</span>
                                   : <span className="badge badge-good">Stocked</span>}
                               </td>
-                              {canEdit && <td><button className="btn-icon-sm btn-icon-danger" onClick={() => removeStockItem(s.id)} title="Remove">✕</button></td>}
+                              {canEdit && <td><button className="btn-icon-sm btn-icon-danger" onClick={() => removeStockItem(s.id)} aria-label={`Remove ${s.equipment_items?.name || 'item'} from this location`} title="Remove">✕</button></td>}
                             </tr>
                           )
                         })}
@@ -437,7 +437,7 @@ function TransferModal({ orgId, locations, stock, equipment, supplyRoom, activeL
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Transfer equipment</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>Transfer equipment</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleTransfer} className="modal-form">
           {rows.map((r, idx) => {
             const maxQty = getMaxQty(r)
@@ -445,7 +445,7 @@ function TransferModal({ orgId, locations, stock, equipment, supplyRoom, activeL
               <div key={r.key} style={{ border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', padding: '0.75rem', marginBottom: '0.5rem', background: 'var(--gray-50)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                   <strong style={{ fontSize: '0.8rem', color: 'var(--gray-600)' }}>Transfer {idx + 1}</strong>
-                  {rows.length > 1 && <button type="button" className="btn-icon-sm" onClick={() => removeRow(r.key)} title="Remove">✕</button>}
+                  {rows.length > 1 && <button type="button" className="btn-icon-sm" onClick={() => removeRow(r.key)} aria-label="Remove this row" title="Remove">✕</button>}
                 </div>
                 <div className="form-group">
                   <label>Item *</label>
@@ -493,12 +493,12 @@ function TransferModal({ orgId, locations, stock, equipment, supplyRoom, activeL
 function AddLocationModal({ onAdd, onClose }) {
   const [name, setName] = useState(''); const [description, setDescription] = useState(''); const [locationType, setLocationType] = useState(''); const [isSupply, setIsSupply] = useState(false); const [error, setError] = useState(''); const [submitting, setSubmitting] = useState(false)
   async function handleSubmit(e) { e.preventDefault(); setSubmitting(true); const { error } = await onAdd({ name, description: description || null, location_type: locationType || null, is_supply_room: isSupply }); if (error) setError(friendlyError(error)); setSubmitting(false) }
-  return (<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Add a location</h2><button className="btn-icon" onClick={onClose}>✕</button></div><form onSubmit={handleSubmit} className="modal-form"><div className="form-group"><label>Name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Field 3 Shed" required autoFocus /></div><div className="form-group"><label>Description</label><input type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="Behind field 3 dugout" /></div><div className="form-group"><label>Type</label><select value={locationType} onChange={e => setLocationType(e.target.value)}><option value="">Select type</option><option value="shed">Shed</option><option value="room">Room</option><option value="closet">Closet</option><option value="garage">Garage</option><option value="other">Other</option></select></div><label className="toggle-label"><input type="checkbox" checked={isSupply} onChange={e => setIsSupply(e.target.checked)} /> This is the main supply room</label>{error && <div className="form-error">{error}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Adding...' : 'Add location'}</button></div></form></div></div>)
+  return (<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Add a location</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><form onSubmit={handleSubmit} className="modal-form"><div className="form-group"><label>Name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Field 3 Shed" required autoFocus /></div><div className="form-group"><label>Description</label><input type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="Behind field 3 dugout" /></div><div className="form-group"><label>Type</label><select value={locationType} onChange={e => setLocationType(e.target.value)}><option value="">Select type</option><option value="shed">Shed</option><option value="room">Room</option><option value="closet">Closet</option><option value="garage">Garage</option><option value="other">Other</option></select></div><label className="toggle-label"><input type="checkbox" checked={isSupply} onChange={e => setIsSupply(e.target.checked)} /> This is the main supply room</label>{error && <div className="form-error">{error}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={submitting}>{submitting ? 'Adding...' : 'Add location'}</button></div></form></div></div>)
 }
 
 function EditLocationModal({ location, onSave, onClose }) {
   const [name, setName] = useState(location.name); const [description, setDescription] = useState(location.description || ''); const [locationType, setLocationType] = useState(location.location_type || '')
-  return (<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Edit location</h2><button className="btn-icon" onClick={onClose}>✕</button></div><div className="modal-form"><div className="form-group"><label>Name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-group"><label>Description</label><input type="text" value={description} onChange={e => setDescription(e.target.value)} /></div><div className="form-group"><label>Type</label><select value={locationType} onChange={e => setLocationType(e.target.value)}><option value="">Select type</option><option value="shed">Shed</option><option value="room">Room</option><option value="closet">Closet</option><option value="garage">Garage</option><option value="other">Other</option></select></div><div className="modal-actions"><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={() => onSave(location.id, { name, description: description || null, location_type: locationType || null })}>Save</button></div></div></div></div>)
+  return (<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Edit location</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><div className="modal-form"><div className="form-group"><label>Name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-group"><label>Description</label><input type="text" value={description} onChange={e => setDescription(e.target.value)} /></div><div className="form-group"><label>Type</label><select value={locationType} onChange={e => setLocationType(e.target.value)}><option value="">Select type</option><option value="shed">Shed</option><option value="room">Room</option><option value="closet">Closet</option><option value="garage">Garage</option><option value="other">Other</option></select></div><div className="modal-actions"><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={() => onSave(location.id, { name, description: description || null, location_type: locationType || null })}>Save</button></div></div></div></div>)
 }
 
 function AddStockModal({ locationId, locationName, availableItems, onAdd, onClose }) {
@@ -521,7 +521,7 @@ function AddStockModal({ locationId, locationName, availableItems, onAdd, onClos
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Add items to {locationName}</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>Add items to {locationName}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <div className="modal-form">
           {adding ? (
             <div>

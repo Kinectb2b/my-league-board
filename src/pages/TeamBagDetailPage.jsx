@@ -256,7 +256,7 @@ export default function TeamBagDetailPage() {
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <span className="badge" style={{ backgroundColor: sc.bg, color: sc.color, fontSize: '0.85rem', padding: '0.25rem 0.75rem' }}>{sc.label}</span>
             {bag.status === 'building' && (
-              <button className="btn-icon-sm btn-icon-danger" onClick={deleteBag} title="Delete bag">✕</button>
+              <button className="btn-icon-sm btn-icon-danger" onClick={deleteBag} aria-label="Delete this bag" title="Delete bag">✕</button>
             )}
           </div>
         </div>
@@ -481,7 +481,7 @@ function PickItemModal({ bagItem, equipmentItems, stockData, locations, onPick, 
       <div className="modal" style={{ maxWidth: '540px' }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Pick: {bagItem.equipment_categories?.name}</h2>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-form">
           <div className="form-group">
@@ -527,7 +527,7 @@ function ReportItemModal({ bagItem, onReport, onClose }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Report: {bagItem.equipment_categories?.name}</h2>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-form">
           <div className="form-group">
@@ -562,7 +562,7 @@ function PickupModal({ onConfirm, onClose }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Record pickup</h2>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-form">
           <div className="form-group">
@@ -598,7 +598,7 @@ function ReturnModal({ onConfirm, onClose }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Return inspection</h2>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-form">
           <p className="text-muted" style={{ fontSize: '0.85rem' }}>

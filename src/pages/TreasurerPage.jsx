@@ -205,7 +205,7 @@ function AddTransactionModal({ categories, orgId, userId, onClose, addToast }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Add transaction</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>Add transaction</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>Type *</label>
@@ -261,7 +261,7 @@ function AddSponsorModal({ orgId, seasons, activeSeason, onClose, addToast }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Add sponsor</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>Add sponsor</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group"><label>Business name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp" required /></div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>

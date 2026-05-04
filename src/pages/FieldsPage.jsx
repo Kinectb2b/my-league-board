@@ -261,7 +261,7 @@ function FieldModal({ field, onSave, onClose }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{field ? 'Edit field' : 'Add a field'}</h2>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">

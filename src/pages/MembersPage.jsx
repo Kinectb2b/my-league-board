@@ -335,7 +335,7 @@ function AddMemberModal({ orgId, onClose, onAdded }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Add a member</h2>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="modal-form">
           {error && <div className="form-error">{error}</div>}

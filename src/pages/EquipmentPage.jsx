@@ -558,7 +558,7 @@ export default function EquipmentPage() {
           <div className="eq-mobile-sheet" onClick={e => e.stopPropagation()}>
             <div className="eq-mobile-sheet-header">
               <h3>Browse categories</h3>
-              <button className="btn-icon" onClick={() => setShowMobileTree(false)}>✕</button>
+              <button className="btn-icon" onClick={() => setShowMobileTree(false)} aria-label="Close categories panel">✕</button>
             </div>
             <div className="eq-mobile-sheet-body">
               <button
@@ -598,7 +598,7 @@ export default function EquipmentPage() {
           <div className="eq-mobile-sheet" onClick={e => e.stopPropagation()}>
             <div className="eq-mobile-sheet-header">
               <h3>Filters</h3>
-              <button className="btn-icon" onClick={() => setShowMobileFilters(false)}>✕</button>
+              <button className="btn-icon" onClick={() => setShowMobileFilters(false)} aria-label="Close filters panel">✕</button>
             </div>
             <div className="eq-mobile-sheet-body" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               <div className="form-group">
@@ -1090,7 +1090,7 @@ function ReceiveModal({ item, items, locations, orgId, userId, onDone, onClose, 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Receive stock</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>Receive stock</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>Item</label>
@@ -1177,7 +1177,7 @@ function TransferModal({ item, locations, stockData, orgId, userId, onDone, onCl
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Transfer: {item.name}</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>Transfer: {item.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>From location</label>
@@ -1267,7 +1267,7 @@ function RemoveModal({ item, locations, stockData, orgId, userId, onDone, onClos
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Remove: {item.name}</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>Remove: {item.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>From location</label>
@@ -1339,7 +1339,7 @@ function AuditModal({ item, locations, stockData, orgId, userId, onDone, onClose
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Audit: {item.name}</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>Audit: {item.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>Location</label>
@@ -1432,7 +1432,7 @@ function HistoryModal({ item, locations, orgId, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: '640px' }} onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>History: {item.name}</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>History: {item.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <div className="modal-form">
           {loading ? (
             <SkeletonList rows={4} rowHeight="2rem" />
@@ -1524,7 +1524,7 @@ function ItemDetailModal({ item, locationStock, locations, canEdit, onClose }) {
       <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{item.name}</h2>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-form">
           <div style={{ display: 'flex', gap: '2rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
@@ -1673,7 +1673,7 @@ function SmartAddModal({ item, categories, locations, orgId, onSave, onClose }) 
     return (
       <div className="modal-overlay" onClick={onClose}>
         <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
-          <div className="modal-header"><h2>What are you adding?</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+          <div className="modal-header"><h2>What are you adding?</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
           <div className="type-grid">
             {EQUIPMENT_TYPES.map(t => (
               <button key={t.id} className="type-card" onClick={() => setEquipType(t.id)}>
@@ -1696,7 +1696,7 @@ function SmartAddModal({ item, categories, locations, orgId, onSave, onClose }) 
           <h2>{item ? 'Edit equipment' : 'Add equipment'}</h2>
           <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
             {!item && <button className="btn-secondary btn-sm" onClick={() => setEquipType(null)}>← Change type</button>}
-            <button className="btn-icon" onClick={onClose}>✕</button>
+            <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
           </div>
         </div>
         <form onSubmit={handleSubmit} className="modal-form">

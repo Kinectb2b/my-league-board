@@ -176,9 +176,9 @@ export default function BagTemplatesPage() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '0.25rem' }}>
-                          <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setEditing(tmpl) }} title="Edit">✎</button>
-                          <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); duplicateTemplate(tmpl) }} title="Duplicate">⧉</button>
-                          <button className="btn-icon-sm btn-icon-danger" onClick={e => { e.stopPropagation(); deleteTemplate(tmpl.id, tmpl.name) }} title="Delete">✕</button>
+                          <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); setEditing(tmpl) }} aria-label={`Edit ${tmpl.name}`} title="Edit">✎</button>
+                          <button className="btn-icon-sm" onClick={e => { e.stopPropagation(); duplicateTemplate(tmpl) }} aria-label={`Duplicate ${tmpl.name}`} title="Duplicate">⧉</button>
+                          <button className="btn-icon-sm btn-icon-danger" onClick={e => { e.stopPropagation(); deleteTemplate(tmpl.id, tmpl.name) }} aria-label={`Delete ${tmpl.name}`} title="Delete">✕</button>
                         </div>
                       </td>
                     </tr>
@@ -357,7 +357,7 @@ function TemplateModal({ template, categories, sportTypes, divisions, equipmentI
       <div className="modal" style={{ maxWidth: '720px' }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{template ? 'Edit template' : 'Create a bag template'}</h2>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
@@ -430,7 +430,7 @@ function TemplateModal({ template, categories, sportTypes, divisions, equipmentI
                         <option value="">Any item in category</option>
                         {itemsInCat.map(ei => <option key={ei.id} value={ei.id}>{ei.name}{ei.brand ? ` (${ei.brand})` : ''}</option>)}
                       </select>
-                      <button type="button" className="btn-icon-sm btn-icon-danger" onClick={() => removeItem(idx)}>✕</button>
+                      <button type="button" className="btn-icon-sm btn-icon-danger" onClick={() => removeItem(idx)} aria-label="Remove this item">✕</button>
                     </div>
                   )
                 })}

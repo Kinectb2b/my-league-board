@@ -224,7 +224,7 @@ function AddIncidentModal({ orgId, userId, onClose, addToast }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '550px' }}>
-        <div className="modal-header"><h2>Report an incident</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>Report an incident</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <div className="form-group" style={{ flex: 1 }}><label>Date *</label><input type="date" value={date} onChange={e => setDate(e.target.value)} required /></div>
@@ -285,7 +285,7 @@ function AddCheckModal({ orgId, onClose, addToast }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Add a background check</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>Add a background check</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group"><label>Person name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} required /></div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -332,7 +332,7 @@ function AddKitModal({ orgId, onClose, addToast }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Add a first aid kit</h2><button className="btn-icon" onClick={onClose}>✕</button></div>
+        <div className="modal-header"><h2>Add a first aid kit</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group"><label>Kit name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Field 3 Kit, Board Room Kit, etc." required /></div>
           <div className="form-group"><label>Location</label><input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="Where is this kit kept?" /></div>

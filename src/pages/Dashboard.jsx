@@ -91,7 +91,7 @@ export default function Dashboard() {
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             {lastUpdated && <span className="text-muted" style={{ fontSize: '0.75rem' }}>Updated {lastUpdated.toLocaleTimeString()}</span>}
-            <button className="btn-icon-sm" onClick={fetchStats} title="Refresh" style={{ fontSize: '1rem' }}>↻</button>
+            <button className="btn-icon-sm" onClick={fetchStats} aria-label="Refresh dashboard" title="Refresh" style={{ fontSize: '1rem' }}>↻</button>
           </div>
         </div>
 

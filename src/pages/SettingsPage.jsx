@@ -211,7 +211,7 @@ function TemplateEditor({ template, equipment, onSave, onClose }) {
       <div className="modal" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{template ? 'Edit template' : 'Create a template'}</h2>
-          <button className="btn-icon" onClick={onClose}>✕</button>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
