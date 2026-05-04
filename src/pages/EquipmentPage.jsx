@@ -1,5 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -1241,6 +1242,8 @@ const REMOVE_REASONS = [
 ]
 
 function RemoveModal({ item, locations, stockData, orgId, userId, onDone, onClose, addToast }) {
+  const fromLocationRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: fromLocationRef })
   const itemStock = stockData.filter(s => s.equipment_item_id === item.id && s.quantity > 0)
   const [fromLocationId, setFromLocationId] = useState('')
   const [quantity, setQuantity] = useState(1)
@@ -1275,12 +1278,12 @@ function RemoveModal({ item, locations, stockData, orgId, userId, onDone, onClos
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Remove: {item.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="eq-remove-modal-title">
+        <div className="modal-header"><h2 id="eq-remove-modal-title">Remove: {item.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>From location</label>
-            <select value={fromLocationId} onChange={e => { setFromLocationId(e.target.value); setQuantity(1) }} required>
+            <select ref={fromLocationRef} value={fromLocationId} onChange={e => { setFromLocationId(e.target.value); setQuantity(1) }} required>
               <option value="">Select...</option>
               {itemStock.map(s => {
                 const loc = locations.find(l => l.id === s.storage_location_id)
@@ -1402,6 +1405,8 @@ function AuditModal({ item, locations, stockData, orgId, userId, onDone, onClose
 }
 
 function HistoryModal({ item, locations, orgId, onClose }) {
+  const closeButtonRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: closeButtonRef })
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -1440,8 +1445,8 @@ function HistoryModal({ item, locations, orgId, onClose }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: '640px' }} onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>History: {item.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+      <div ref={modalRef} className="modal" style={{ maxWidth: '640px' }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="eq-history-modal-title">
+        <div className="modal-header"><h2 id="eq-history-modal-title">History: {item.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <div className="modal-form">
           {loading ? (
             <SkeletonList rows={4} rowHeight="2rem" />
@@ -1475,7 +1480,7 @@ function HistoryModal({ item, locations, orgId, onClose }) {
             </div>
           )}
           <div className="modal-actions" style={{ marginTop: '1rem' }}>
-            <button className="btn-secondary" onClick={onClose}>Close</button>
+            <button ref={closeButtonRef} className="btn-secondary" onClick={onClose}>Close</button>
           </div>
         </div>
       </div>
@@ -1489,6 +1494,8 @@ function HistoryModal({ item, locations, orgId, onClose }) {
 // =================================================================
 
 function ItemDetailModal({ item, locationStock, locations, canEdit, onClose }) {
+  const closeButtonRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: closeButtonRef })
   const { addToast } = useToast()
   const itemStock = locationStock.filter(s => s.equipment_item_id === item.id)
   const totalStocked = itemStock.reduce((sum, s) => sum + s.quantity, 0)
@@ -1530,9 +1537,9 @@ function ItemDetailModal({ item, locationStock, locations, canEdit, onClose }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="eq-detail-modal-title">
         <div className="modal-header">
-          <h2>{item.name}</h2>
+          <h2 id="eq-detail-modal-title">{item.name}</h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-form">
@@ -1606,7 +1613,7 @@ function ItemDetailModal({ item, locationStock, locations, canEdit, onClose }) {
           )}
 
           <div className="modal-actions" style={{ marginTop: '1rem' }}>
-            <button className="btn-secondary" onClick={onClose}>Close</button>
+            <button ref={closeButtonRef} className="btn-secondary" onClick={onClose}>Close</button>
           </div>
         </div>
       </div>

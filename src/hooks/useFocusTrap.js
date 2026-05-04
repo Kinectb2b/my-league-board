@@ -31,17 +31,48 @@ function getFocusableElements(container) {
  *   4. Close on Escape
  *   5. Restore focus to the trigger on unmount
  *
- * Why initialFocusRef exists: modal containers typically render the close X
- * button first in DOM order (inside .modal-header), so the naive "first
- * focusable" pick lands on Close. That's a poor experience — screen readers
- * announce "Close, button" before the user hears the modal's purpose, and
- * a reflexive Enter dismisses the modal. Callers pass a ref to the element
- * that should receive focus (typically the first form input). If omitted,
- * the hook falls back to first focusable — useful for confirmation modals
- * with no clear input-first surface.
+ * Per-site initial-focus decision tree (caller's choice via initialFocusRef).
+ * Each rule has a Principle line — when an edge case doesn't fit neatly into
+ * one bucket, reason from the principle, not the literal rule.
  *
- * onClose is held via ref so its identity changes (inline arrow funcs) don't
- * tear down and rebind the keydown listener on every parent re-render.
+ *   FORM modal (has text input / select / textarea):
+ *     → ref to first form input.
+ *     Principle: user came to fill the form; reach the data-entry surface
+ *     immediately. Replaces any existing autoFocus attribute (one mechanism,
+ *     not two).
+ *
+ *   INFO-ONLY modal (no inputs, just read-only body + dismissal):
+ *     → ref to the prominent bottom Close/Done button if one exists.
+ *     → Otherwise omit; first-focusable fallback lands on the close X
+ *       in the modal header, which is fine.
+ *     Principle: no input to make; provide the dismiss affordance
+ *     immediately.
+ *
+ *   PURE CONFIRMATION modal (Confirm + Cancel only, no inputs — rare in
+ *   this codebase; browser confirm() is used for most destructive ops):
+ *     → ref to Cancel (the safer button).
+ *     Principle: destructive default-Enter behavior must be guarded by an
+ *     explicit step away from the safer button.
+ *
+ *   FORM modal with destructive primary action (e.g., RemoveModal — has
+ *   form inputs AND the submit button is destructive):
+ *     → treat as FORM. ref to first input.
+ *     Principle: form fields gate the destructive op; user came to fill the
+ *     form, not fire it. Edge case: if the form is single-field-ceremonial
+ *     (e.g., type "DELETE" to confirm), the field IS the confirmation gate
+ *     and Enter on it would fire the destructive submit — prefer Cancel in
+ *     that case. File as a follow-up audit ID if such a pattern surfaces
+ *     in the sweep.
+ *
+ * Why initialFocusRef exists at all: modal-header renders the close X
+ * first in DOM order, so naive "first focusable" lands on Close — poor
+ * experience for FORM modals (screen readers announce "Close, button"
+ * before the user hears the modal's purpose; reflexive Enter dismisses).
+ * Pilot verification on /bag-templates surfaced this; the ref pattern
+ * is the explicit fix.
+ *
+ * onClose is held via ref so identity churn (inline arrow funcs) doesn't
+ * tear down and rebind the keydown listener on parent re-render.
  */
 export function useFocusTrap({ onClose, initialFocusRef }) {
   const containerRef = useRef(null)
