@@ -295,7 +295,7 @@ function TemplateModal({ template, categories, sportTypes, divisions, equipmentI
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: '720px' }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{template ? 'Edit template' : 'Create bag template'}</h2>
+          <h2>{template ? 'Edit template' : 'Create a bag template'}</h2>
           <button className="btn-icon" onClick={onClose}>✕</button>
         </div>
         <form onSubmit={handleSubmit} className="modal-form">

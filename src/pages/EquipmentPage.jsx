@@ -1692,7 +1692,7 @@ function SmartAddModal({ item, categories, locations, orgId, onSave, onClose }) 
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h2>{item ? 'Edit equipment' : `Add ${typeLabel}`}</h2>
+          <h2>{item ? 'Edit equipment' : 'Add equipment'}</h2>
           <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
             {!item && <button className="btn-secondary btn-sm" onClick={() => setEquipType(null)}>← Change type</button>}
             <button className="btn-icon" onClick={onClose}>✕</button>
