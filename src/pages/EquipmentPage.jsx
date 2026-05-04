@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
+import { friendlyError } from '../lib/errors'
 import { SkeletonList } from '../components/Skeleton'
 
 const EQUIPMENT_TYPES = [
@@ -1081,7 +1082,7 @@ function ReceiveModal({ item, items, locations, orgId, userId, onDone, onClose, 
       created_by: userId
     })
     setSubmitting(false)
-    if (error) { addToast(error.message, 'error'); return }
+    if (error) { addToast(friendlyError(error), 'error'); return }
     addToast(`Received ${total} units`)
     onDone()
   }
@@ -1168,7 +1169,7 @@ function TransferModal({ item, locations, stockData, orgId, userId, onDone, onCl
       created_by: userId
     })
     setSubmitting(false)
-    if (error) { addToast(error.message, 'error'); return }
+    if (error) { addToast(friendlyError(error), 'error'); return }
     addToast(`Transferred ${quantity} units`)
     onDone()
   }
@@ -1258,7 +1259,7 @@ function RemoveModal({ item, locations, stockData, orgId, userId, onDone, onClos
       created_by: userId
     })
     setSubmitting(false)
-    if (error) { addToast(error.message, 'error'); return }
+    if (error) { addToast(friendlyError(error), 'error'); return }
     addToast(`Removed ${quantity} units (${selectedReason.label.toLowerCase()})`)
     onDone()
   }
@@ -1330,7 +1331,7 @@ function AuditModal({ item, locations, stockData, orgId, userId, onDone, onClose
       created_by: userId
     })
     setSubmitting(false)
-    if (error) { addToast(error.message, 'error'); return }
+    if (error) { addToast(friendlyError(error), 'error'); return }
     addToast(`Audit recorded: ${delta > 0 ? '+' : ''}${delta}`)
     onDone()
   }

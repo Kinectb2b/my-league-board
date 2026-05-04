@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/Toast'
+import { friendlyError } from '../lib/errors'
 
 export default function ProfilePage() {
   const { user } = useAuth()
@@ -54,7 +55,7 @@ export default function ProfilePage() {
       shirt_size: profile.shirt_size,
       address: profile.address
     }).eq('id', user.id)
-    if (error) addToast('Failed to save', 'error')
+    if (error) addToast(friendlyError(error), 'error')
     else addToast('Profile updated')
     setSaving(false)
   }
@@ -65,7 +66,7 @@ export default function ProfilePage() {
     if (newPassword !== confirmPassword) { addToast('Passwords do not match', 'error'); return }
     setChangingPassword(true)
     const { error } = await supabase.auth.updateUser({ password: newPassword })
-    if (error) addToast('Failed to change password: ' + error.message, 'error')
+    if (error) addToast(friendlyError(error), 'error')
     else { addToast('Password changed'); setNewPassword(''); setConfirmPassword('') }
     setChangingPassword(false)
   }
