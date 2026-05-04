@@ -48,6 +48,25 @@ function getFocusableElements(container) {
  *     Principle: no input to make; provide the dismiss affordance
  *     immediately.
  *
+ *   INFO+ACTIONS modal (no inputs, but has primary action buttons
+ *   beyond dismissal — e.g., a position-detail modal with "Send
+ *   invitation" / "Unassign"):
+ *     → ref to the primary action button. Most-affirmative-action
+ *       precedence: Save > Apply > Confirm > Send > Assign > etc.
+ *       NOT first-in-DOM-order — the action the user most likely came
+ *       for, not whichever the layout happens to place first.
+ *     → If primary action is state-conditional (button rendered only
+ *       when canEdit / status === X / etc.), pass the ref to whichever
+ *       button is conditionally rendered. React attaches the ref only
+ *       when the button mounts; verify via modalRef.current after
+ *       render that the right button received it.
+ *     → If no actions render (read-only viewer / canEdit=false / no
+ *       available actions for current state), the modal IS effectively
+ *       INFO-ONLY for that user — close-X fallback is the correct
+ *       dismiss path, not a degradation.
+ *     Principle: focus the surface the user came for. Same logic as
+ *     FORM, applied to action-buttons rather than inputs.
+ *
  *   PURE CONFIRMATION modal (Confirm + Cancel only, no inputs — rare in
  *   this codebase; browser confirm() is used for most destructive ops):
  *     → ref to Cancel (the safer button).

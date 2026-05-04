@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/Toast'
 import { friendlyError } from '../lib/errors'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 export default function TreasurerPage() {
   const { currentOrg, hasAnyRole } = useOrg()
@@ -177,6 +178,8 @@ export default function TreasurerPage() {
 }
 
 function AddTransactionModal({ categories, orgId, userId, onClose, addToast }) {
+  const amountInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: amountInputRef })
   const [type, setType] = useState('expense')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
@@ -204,8 +207,8 @@ function AddTransactionModal({ categories, orgId, userId, onClose, addToast }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Add transaction</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="treas-tx-modal-title">
+        <div className="modal-header"><h2 id="treas-tx-modal-title">Add transaction</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>Type *</label>
@@ -215,7 +218,7 @@ function AddTransactionModal({ categories, orgId, userId, onClose, addToast }) {
             </div>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <div className="form-group" style={{ flex: 1 }}><label>Amount *</label><input type="number" step="0.01" min="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" required /></div>
+            <div className="form-group" style={{ flex: 1 }}><label>Amount *</label><input ref={amountInputRef} type="number" step="0.01" min="0.01" value={amount} onChange={e => setAmount(e.target.value)} placeholder="0.00" required /></div>
             <div className="form-group" style={{ flex: 1 }}><label>Date *</label><input type="date" value={date} onChange={e => setDate(e.target.value)} required /></div>
           </div>
           <div className="form-group"><label>Description *</label><input type="text" value={description} onChange={e => setDescription(e.target.value)} placeholder="What was this for?" required /></div>
@@ -233,6 +236,8 @@ function AddTransactionModal({ categories, orgId, userId, onClose, addToast }) {
 }
 
 function AddSponsorModal({ orgId, seasons, activeSeason, onClose, addToast }) {
+  const nameInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: nameInputRef })
   const [name, setName] = useState('')
   const [contactName, setContactName] = useState('')
   const [contactEmail, setContactEmail] = useState('')
@@ -260,10 +265,10 @@ function AddSponsorModal({ orgId, seasons, activeSeason, onClose, addToast }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Add sponsor</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="treas-sponsor-modal-title">
+        <div className="modal-header"><h2 id="treas-sponsor-modal-title">Add sponsor</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-group"><label>Business name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp" required /></div>
+          <div className="form-group"><label>Business name *</label><input ref={nameInputRef} type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp" required /></div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <div className="form-group" style={{ flex: 1 }}><label>Contact name</label><input type="text" value={contactName} onChange={e => setContactName(e.target.value)} placeholder="John Smith" /></div>
             <div className="form-group" style={{ flex: 1 }}><label>Phone</label><input type="tel" value={contactPhone} onChange={e => setContactPhone(e.target.value)} placeholder="(555) 123-4567" /></div>

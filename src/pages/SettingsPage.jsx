@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useOrg } from '../contexts/OrgContext'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { friendlyError } from '../lib/errors'
@@ -186,6 +187,8 @@ export default function SettingsPage() {
 }
 
 function TemplateEditor({ template, equipment, onSave, onClose }) {
+  const nameInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: nameInputRef })
   const [name, setName] = useState(template?.name || '')
   const [items, setItems] = useState(
     template?.kit_template_items?.map(i => ({
@@ -208,15 +211,15 @@ function TemplateEditor({ template, equipment, onSave, onClose }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()}>
+      <div ref={modalRef} className="modal" style={{ maxWidth: '600px' }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="settings-template-modal-title">
         <div className="modal-header">
-          <h2>{template ? 'Edit template' : 'Create a template'}</h2>
+          <h2 id="settings-template-modal-title">{template ? 'Edit template' : 'Create a template'}</h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>Template name *</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Standard Baseball Bag" required autoFocus />
+            <input ref={nameInputRef} type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Standard Baseball Bag" required />
           </div>
           <div style={{ border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', padding: '1rem', background: 'var(--gray-50)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>

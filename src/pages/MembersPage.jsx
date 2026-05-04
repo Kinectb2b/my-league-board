@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/Toast'
@@ -249,6 +250,8 @@ export default function MembersPage() {
 }
 
 function AddMemberModal({ orgId, onClose, onAdded }) {
+  const fullNameRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: fullNameRef })
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -332,16 +335,16 @@ function AddMemberModal({ orgId, onClose, onAdded }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="mem-add-modal-title">
         <div className="modal-header">
-          <h2>Add a member</h2>
+          <h2 id="mem-add-modal-title">Add a member</h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="modal-form">
           {error && <div className="form-error">{error}</div>}
           <div className="form-group">
             <label>Full name *</label>
-            <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="John Smith" required />
+            <input ref={fullNameRef} type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="John Smith" required />
           </div>
           <div className="form-group">
             <label>Email address *</label>

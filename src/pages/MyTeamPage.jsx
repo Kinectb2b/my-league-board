@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -523,6 +524,8 @@ function TeamDetail({ team, showBackToList }) {
 // ─── Invite Coach Modal ──────────────────────────────────────────
 
 function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
+  const fullNameRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: fullNameRef })
   const { addToast } = useToast()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -598,8 +601,8 @@ function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
   if (inviteLink) {
     return (
       <div className="modal-overlay" onClick={onClose}>
-        <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
-          <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--green-900)', marginBottom: '1rem' }}>Invitation created</h2>
+        <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }} role="dialog" aria-modal="true" aria-labelledby="myteam-invite-success-title">
+          <h2 id="myteam-invite-success-title" style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--green-900)', marginBottom: '1rem' }}>Invitation created</h2>
           <p className="text-muted" style={{ fontSize: '0.9rem', marginBottom: '0.75rem' }}>
             Share this link with {fullName || email} to join as an assistant coach for {team.name}:
           </p>
@@ -624,8 +627,8 @@ function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
-        <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--green-900)', marginBottom: '0.25rem' }}>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }} role="dialog" aria-modal="true" aria-labelledby="myteam-invite-form-title">
+        <h2 id="myteam-invite-form-title" style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--green-900)', marginBottom: '0.25rem' }}>
           Invite assistant coach
         </h2>
         <p className="text-muted" style={{ fontSize: '0.85rem', marginBottom: '1rem' }}>
@@ -637,7 +640,7 @@ function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
         <form onSubmit={handleSubmit}>
           <div className="form-group" style={{ marginBottom: '0.75rem' }}>
             <label className="form-label">Full name *</label>
-            <input className="form-input" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Coach name" required />
+            <input ref={fullNameRef} className="form-input" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Coach name" required />
           </div>
           <div className="form-group" style={{ marginBottom: '0.75rem' }}>
             <label className="form-label">Email *</label>

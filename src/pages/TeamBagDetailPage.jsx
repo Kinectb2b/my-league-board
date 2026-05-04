@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -7,6 +7,7 @@ import { useToast } from '../components/Toast'
 import { friendlyError } from '../lib/errors'
 import { getBagStatusConfig } from '../lib/bagStatus'
 import { SkeletonPage } from '../components/Skeleton'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 export default function TeamBagDetailPage() {
   const { id } = useParams()
@@ -462,6 +463,8 @@ function BagItemRow({ bagItem, suggestion, bagStatus, onPack, onUnpack, onPickDi
 }
 
 function PickItemModal({ bagItem, equipmentItems, stockData, locations, onPick, onClose }) {
+  const itemSelectRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: itemSelectRef })
   const [selectedItemId, setSelectedItemId] = useState('')
   const [selectedLocId, setSelectedLocId] = useState('')
 
@@ -478,15 +481,15 @@ function PickItemModal({ bagItem, equipmentItems, stockData, locations, onPick, 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" style={{ maxWidth: '540px' }} onClick={e => e.stopPropagation()}>
+      <div ref={modalRef} className="modal" style={{ maxWidth: '540px' }} onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="tbd-pick-modal-title">
         <div className="modal-header">
-          <h2>Pick: {bagItem.equipment_categories?.name}</h2>
+          <h2 id="tbd-pick-modal-title">Pick: {bagItem.equipment_categories?.name}</h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-form">
           <div className="form-group">
             <label>Item</label>
-            <select value={selectedItemId} onChange={e => { setSelectedItemId(e.target.value); setSelectedLocId('') }}>
+            <select ref={itemSelectRef} value={selectedItemId} onChange={e => { setSelectedItemId(e.target.value); setSelectedLocId('') }}>
               <option value="">Select item...</option>
               {candidatesWithStock.map(c => (
                 <option key={c.id} value={c.id} disabled={c.totalAvail === 0}>
@@ -519,20 +522,22 @@ function PickItemModal({ bagItem, equipmentItems, stockData, locations, onPick, 
 }
 
 function ReportItemModal({ bagItem, onReport, onClose }) {
+  const issueSelectRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: issueSelectRef })
   const [action, setAction] = useState('')
   const [reason, setReason] = useState('')
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="tbd-report-modal-title">
         <div className="modal-header">
-          <h2>Report: {bagItem.equipment_categories?.name}</h2>
+          <h2 id="tbd-report-modal-title">Report: {bagItem.equipment_categories?.name}</h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-form">
           <div className="form-group">
             <label>Issue *</label>
-            <select value={action} onChange={e => setAction(e.target.value)} required>
+            <select ref={issueSelectRef} value={action} onChange={e => setAction(e.target.value)} required>
               <option value="">Select...</option>
               <option value="lost">Lost</option>
               <option value="damaged">Damaged</option>
@@ -554,25 +559,27 @@ function ReportItemModal({ bagItem, onReport, onClose }) {
 }
 
 function PickupModal({ onConfirm, onClose }) {
+  const pickedUpByRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: pickedUpByRef })
   const [name, setName] = useState('')
   const trimmed = name.trim()
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="tbd-pickup-modal-title">
         <div className="modal-header">
-          <h2>Record pickup</h2>
+          <h2 id="tbd-pickup-modal-title">Record pickup</h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-form">
           <div className="form-group">
             <label>Picked up by *</label>
             <input
+              ref={pickedUpByRef}
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Coach name"
-              autoFocus
               required
             />
           </div>
@@ -591,13 +598,15 @@ function PickupModal({ onConfirm, onClose }) {
 }
 
 function ReturnModal({ onConfirm, onClose }) {
+  const conditionSelectRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: conditionSelectRef })
   const [condition, setCondition] = useState('')
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="tbd-return-modal-title">
         <div className="modal-header">
-          <h2>Return inspection</h2>
+          <h2 id="tbd-return-modal-title">Return inspection</h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-form">
@@ -606,7 +615,7 @@ function ReturnModal({ onConfirm, onClose }) {
           </p>
           <div className="form-group">
             <label>Overall condition</label>
-            <select value={condition} onChange={e => setCondition(e.target.value)}>
+            <select ref={conditionSelectRef} value={condition} onChange={e => setCondition(e.target.value)}>
               <option value="">Select...</option>
               <option value="Good - all items present">Good - all items present</option>
               <option value="Missing items">Missing items</option>

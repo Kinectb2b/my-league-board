@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useOrg } from '../contexts/OrgContext'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import { supabase } from '../lib/supabase'
 import { useToast } from '../components/Toast'
 import { useNavigate } from 'react-router-dom'
@@ -215,6 +216,8 @@ export default function TeamBagsPage() {
 }
 
 function CreateBagModal({ teams, templates, seasons, bags, onCreate, onClose }) {
+  const teamSelectRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: teamSelectRef })
   const [teamId, setTeamId] = useState('')
   const [templateId, setTemplateId] = useState('')
   const [seasonId, setSeasonId] = useState(seasons.find(s => s.is_active)?.id || '')

@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../components/Toast'
 import { friendlyError } from '../lib/errors'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 export default function SafetyPage() {
   const { currentOrg, hasAnyRole } = useOrg()
@@ -193,6 +194,8 @@ export default function SafetyPage() {
 }
 
 function AddIncidentModal({ orgId, userId, onClose, addToast }) {
+  const dateInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: dateInputRef })
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [time, setTime] = useState('')
   const [location, setLocation] = useState('')
@@ -223,11 +226,11 @@ function AddIncidentModal({ orgId, userId, onClose, addToast }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '550px' }}>
-        <div className="modal-header"><h2>Report an incident</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '550px' }} role="dialog" aria-modal="true" aria-labelledby="safety-incident-modal-title">
+        <div className="modal-header"><h2 id="safety-incident-modal-title">Report an incident</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <div className="form-group" style={{ flex: 1 }}><label>Date *</label><input type="date" value={date} onChange={e => setDate(e.target.value)} required /></div>
+            <div className="form-group" style={{ flex: 1 }}><label>Date *</label><input ref={dateInputRef} type="date" value={date} onChange={e => setDate(e.target.value)} required /></div>
             <div className="form-group" style={{ flex: 1 }}><label>Time</label><input type="time" value={time} onChange={e => setTime(e.target.value)} /></div>
           </div>
           <div className="form-group"><label>Location</label><input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="Field 3, parking lot, etc." /></div>
@@ -256,6 +259,8 @@ function AddIncidentModal({ orgId, userId, onClose, addToast }) {
 }
 
 function AddCheckModal({ orgId, onClose, addToast }) {
+  const personNameRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: personNameRef })
   const [name, setName] = useState('')
   const [role, setRole] = useState('')
   const [submissionDate, setSubmissionDate] = useState(new Date().toISOString().split('T')[0])
@@ -284,10 +289,10 @@ function AddCheckModal({ orgId, onClose, addToast }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Add a background check</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="safety-check-modal-title">
+        <div className="modal-header"><h2 id="safety-check-modal-title">Add a background check</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-group"><label>Person name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} required /></div>
+          <div className="form-group"><label>Person name *</label><input ref={personNameRef} type="text" value={name} onChange={e => setName(e.target.value)} required /></div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <div className="form-group" style={{ flex: 1 }}><label>Role</label><input type="text" value={role} onChange={e => setRole(e.target.value)} placeholder="Coach, volunteer, etc." /></div>
             <div className="form-group" style={{ flex: 1 }}><label>Status</label><select value={status} onChange={e => setStatus(e.target.value)}><option value="pending">Pending</option><option value="approved">Approved</option><option value="denied">Denied</option></select></div>
@@ -308,6 +313,8 @@ function AddCheckModal({ orgId, onClose, addToast }) {
 }
 
 function AddKitModal({ orgId, onClose, addToast }) {
+  const kitNameRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: kitNameRef })
   const [name, setName] = useState('')
   const [location, setLocation] = useState('')
   const [status, setStatus] = useState('good')
@@ -331,10 +338,10 @@ function AddKitModal({ orgId, onClose, addToast }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Add a first aid kit</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="safety-kit-modal-title">
+        <div className="modal-header"><h2 id="safety-kit-modal-title">Add a first aid kit</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
-          <div className="form-group"><label>Kit name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Field 3 Kit, Board Room Kit, etc." required /></div>
+          <div className="form-group"><label>Kit name *</label><input ref={kitNameRef} type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Field 3 Kit, Board Room Kit, etc." required /></div>
           <div className="form-group"><label>Location</label><input type="text" value={location} onChange={e => setLocation(e.target.value)} placeholder="Where is this kit kept?" /></div>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <div className="form-group" style={{ flex: 1 }}><label>Status</label><select value={status} onChange={e => setStatus(e.target.value)}><option value="good">Good</option><option value="needs_restock">Needs restock</option><option value="needs_replacement">Needs replacement</option></select></div>

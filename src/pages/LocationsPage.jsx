@@ -363,6 +363,8 @@ export default function LocationsPage() {
 function TransferModal({ orgId, locations, stock, equipment, supplyRoom, activeLocation, onClose, onCompleted }) {
   const { addToast } = useToast()
   const { currentOrg } = useOrg()
+  const firstItemSelectRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: firstItemSelectRef })
   const blankRow = () => ({
     key: crypto.randomUUID(),
     fromId: supplyRoom?.id || '',
@@ -440,8 +442,8 @@ function TransferModal({ orgId, locations, stock, equipment, supplyRoom, activeL
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Transfer equipment</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+      <div ref={modalRef} className="modal modal-wide" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="loc-transfer-modal-title">
+        <div className="modal-header"><h2 id="loc-transfer-modal-title">Transfer equipment</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleTransfer} className="modal-form">
           {rows.map((r, idx) => {
             const maxQty = getMaxQty(r)
@@ -453,7 +455,7 @@ function TransferModal({ orgId, locations, stock, equipment, supplyRoom, activeL
                 </div>
                 <div className="form-group">
                   <label>Item *</label>
-                  <select value={r.itemId} onChange={e => handleItemSelect(r.key, e.target.value)}>
+                  <select ref={idx === 0 ? firstItemSelectRef : null} value={r.itemId} onChange={e => handleItemSelect(r.key, e.target.value)}>
                     <option value="">Select item...</option>
                     {uniqueStockedItems.map(s => <option key={s.equipment_item_id} value={s.equipment_item_id}>{s.equipment_items?.name}</option>)}
                   </select>
@@ -510,6 +512,8 @@ function EditLocationModal({ location, onSave, onClose }) {
 }
 
 function AddStockModal({ locationId, locationName, availableItems, onAdd, onClose }) {
+  const searchInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: searchInputRef })
   const [search, setSearch] = useState('')
   const [adding, setAdding] = useState(null)
   const [qty, setQty] = useState(0)
@@ -528,14 +532,14 @@ function AddStockModal({ locationId, locationName, availableItems, onAdd, onClos
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Add items to {locationName}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+      <div ref={modalRef} className="modal modal-wide" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="loc-stock-modal-title">
+        <div className="modal-header"><h2 id="loc-stock-modal-title">Add items to {locationName}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <div className="modal-form">
           {adding ? (
             <div>
               <h3 style={{ marginBottom: '1rem', color: 'var(--green-800)' }}>{adding.name}</h3>
               <div className="form-row">
-                <div className="form-group"><label>Current quantity *</label><input type="number" min="0" value={qty} onChange={e => setQty(parseInt(e.target.value) || 0)} autoFocus /></div>
+                <div className="form-group"><label>Current quantity *</label><input type="number" min="0" value={qty} onChange={e => setQty(parseInt(e.target.value) || 0)} /></div>
                 <div className="form-group"><label>Target quantity</label><input type="number" min="0" value={target} onChange={e => setTarget(e.target.value)} placeholder="Optional" /></div>
               </div>
               <div className="modal-actions">
@@ -545,7 +549,7 @@ function AddStockModal({ locationId, locationName, availableItems, onAdd, onClos
             </div>
           ) : (
             <>
-              <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search equipment..." className="search-input" style={{ width: '100%' }} autoFocus />
+              <input ref={searchInputRef} type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search equipment..." className="search-input" style={{ width: '100%' }} />
               {Object.keys(grouped).length === 0 ? (
                 <p className="text-muted" style={{ textAlign: 'center', padding: '1rem' }}>{availableItems.length === 0 ? 'All items are already in this location.' : 'No items match.'}</p>
               ) : (

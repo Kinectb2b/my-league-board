@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
@@ -8,6 +8,7 @@ import { friendlyError } from '../lib/errors'
 import { formatRoleLabel } from '../lib/roles'
 import { logActivity } from '../lib/activity'
 import { groupPositions, getRolesForPosition } from '../lib/boardPositionRoles'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 
 export default function BoardPage() {
   const { currentOrg, hasAnyRole } = useOrg()
@@ -244,15 +245,17 @@ function PositionCard({ position, canEdit, pendingInvite, onSelect, onInvite }) 
 // ─── Position Detail Modal ───────────────────────────────────────
 
 function PositionDetailModal({ position, members, pendingInvite, canEdit, onClose, onAssign, onInvite }) {
+  const primaryActionRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: primaryActionRef })
   const [showAssignPicker, setShowAssignPicker] = useState(false)
   const pos = position
   const roleBadges = getRolesForPosition(pos.title)
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '500px' }} role="dialog" aria-modal="true" aria-labelledby="board-pos-modal-title">
         <div className="modal-header">
-          <h2>{pos.title}</h2>
+          <h2 id="board-pos-modal-title">{pos.title}</h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close">&times;</button>
         </div>
         <div className="modal-form">
@@ -304,6 +307,7 @@ function PositionDetailModal({ position, members, pendingInvite, canEdit, onClos
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {pos.assigned_to ? (
                 <button
+                  ref={primaryActionRef}
                   className="btn-secondary"
                   onClick={() => onAssign(pos.id, null)}
                   style={{ color: 'var(--red-500)' }}
@@ -312,7 +316,7 @@ function PositionDetailModal({ position, members, pendingInvite, canEdit, onClos
                 </button>
               ) : (
                 <>
-                  <button className="btn-primary" onClick={onInvite}>
+                  <button ref={primaryActionRef} className="btn-primary" onClick={onInvite}>
                     Send invitation
                   </button>
                   <button className="btn-secondary" onClick={() => setShowAssignPicker(true)}>
@@ -355,6 +359,8 @@ function PositionDetailModal({ position, members, pendingInvite, canEdit, onClos
 
 function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClose, onSent }) {
   const { addToast } = useToast()
+  const fullNameRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: fullNameRef })
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -454,9 +460,9 @@ function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClos
   if (inviteLink) {
     return (
       <div className="modal-overlay" onClick={() => { onSent() }}>
-        <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+        <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }} role="dialog" aria-modal="true" aria-labelledby="board-invite-success-title">
           <div className="modal-header">
-            <h2>Invitation created</h2>
+            <h2 id="board-invite-success-title">Invitation created</h2>
             <button className="btn-icon" onClick={onSent} aria-label="Close">&times;</button>
           </div>
           <div className="modal-form">
@@ -488,9 +494,9 @@ function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClos
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '480px' }} role="dialog" aria-modal="true" aria-labelledby="board-invite-form-title">
         <div className="modal-header">
-          <h2>Invite to board</h2>
+          <h2 id="board-invite-form-title">Invite to board</h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close">&times;</button>
         </div>
         <form onSubmit={handleSubmit} className="modal-form">
@@ -498,7 +504,7 @@ function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClos
 
           <div className="form-group">
             <label>Full name</label>
-            <input type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith" />
+            <input ref={fullNameRef} type="text" value={fullName} onChange={e => setFullName(e.target.value)} placeholder="Jane Smith" />
           </div>
 
           <div className="form-group">

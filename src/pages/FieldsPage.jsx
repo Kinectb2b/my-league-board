@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -231,6 +232,8 @@ const menuItemStyle = {
 }
 
 function FieldModal({ field, onSave, onClose }) {
+  const nameInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: nameInputRef })
   const [name, setName] = useState(field?.name || '')
   const [fieldType, setFieldType] = useState(field?.field_type || '')
   const [address, setAddress] = useState(field?.address || '')
@@ -258,15 +261,15 @@ function FieldModal({ field, onSave, onClose }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="field-modal-title">
         <div className="modal-header">
-          <h2>{field ? 'Edit field' : 'Add a field'}</h2>
+          <h2 id="field-modal-title">{field ? 'Edit field' : 'Add a field'}</h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>Name *</label>
-            <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Diamond 1" required autoFocus />
+            <input ref={nameInputRef} type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Diamond 1" required />
           </div>
           <div className="form-group">
             <label>Field type</label>
