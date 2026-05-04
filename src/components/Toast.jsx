@@ -14,10 +14,21 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div className="toast-container">
+      {/* aria-live on the container so newly-added toasts get announced.
+          aria-atomic="false" + per-toast aria-atomic="true" so each toast
+          is announced as one whole message instead of as a diff against
+          previous toasts. role="alert" on errors maps to aria-live="assertive"
+          (interrupts whatever the screen reader is reading) — appropriate
+          for failure cases; success/info stay polite via the container. */}
+      <div className="toast-container" aria-live="polite" aria-atomic="false">
         {toasts.map(t => (
-          <div key={t.id} className={`toast toast-${t.type}`}>
-            <span>{t.type === 'success' ? '✓' : t.type === 'error' ? '✕' : 'ℹ'}</span>
+          <div
+            key={t.id}
+            className={`toast toast-${t.type}`}
+            role={t.type === 'error' ? 'alert' : 'status'}
+            aria-atomic="true"
+          >
+            <span aria-hidden="true">{t.type === 'success' ? '✓' : t.type === 'error' ? '✕' : 'ℹ'}</span>
             <span>{t.message}</span>
           </div>
         ))}

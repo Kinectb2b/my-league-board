@@ -48,7 +48,9 @@ export default function Sidebar() {
   return (
     <>
       <div className="mobile-header">
-        <button className="hamburger" onClick={() => setSidebarOpen(true)}>☰</button>
+        <button className="hamburger" onClick={() => setSidebarOpen(true)} aria-label="Open menu" aria-expanded={sidebarOpen}>
+          <span aria-hidden="true">☰</span>
+        </button>
         <span className="mobile-header-title">{currentOrg?.name || 'My League Board'}</span>
       </div>
       <div className={`sidebar-overlay ${sidebarOpen ? 'active' : ''}`} onClick={() => setSidebarOpen(false)} />
