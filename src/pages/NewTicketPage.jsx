@@ -173,8 +173,8 @@ export default function NewTicketPage() {
           </div>
 
           <div className="form-group">
-            <label>Description</label>
-            <textarea value={description} onChange={e => setDescription(e.target.value)} rows={4} placeholder="Provide details, context, or steps to reproduce..." />
+            <label htmlFor="ticket-description">Description</label>
+            <textarea id="ticket-description" value={description} onChange={e => setDescription(e.target.value)} rows={4} placeholder="Provide details, context, or steps to reproduce..." />
           </div>
 
           <div className="form-group">
