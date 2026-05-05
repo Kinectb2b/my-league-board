@@ -196,6 +196,22 @@ Three findings weren't reached during the empirical pass; static analysis stands
 - **A-06** BoardPage avatar `alt=""` decorative-only on a content image
 - **A-07** TicketsPage priority dot color-only (`title` attr, no accessible name)
 
+### New findings (from Cluster 5 batch 2b verification — Session 12)
+
+**A-17 (POLISH) — `useFocusTrap` focus restoration fails when trigger element is re-rendered between modal open and modal close.** Distinct from A-16 (which is about clickable-`<div>` triggers). A-17 is about `<button>` triggers that get unmounted/replaced during the modal's lifecycle — typically because the same state change that opens the modal also triggers a parent-component re-render that rebuilds the trigger's DOM node. The hook's snapshot captures the original button reference, but `document.body.contains(trigger)` correctly returns false on close (the snapshot's button has been unmounted), so restore-focus is skipped and focus falls back to body. **Not a hook bug — the guard is doing exactly what it should.**
+
+**Empirically confirmed:** TeamsPage `BulkAssignModal` 🎒 bulk-assign trigger button (Cluster 5 batch 2b verification, Session 12). `window.__bulkTrigger` snapshot is a `<button>` but post-close `document.body.contains(trigger)` returns false. **Likely also affects:** TreasurerPage `+ Add transaction` button (the Treasurer anomaly noted in A-16's watch-item — same fingerprint, different site). Confirmation diagnostic: `console.log(triggerRef.current, document.body.contains(triggerRef.current))` in the hook's cleanup.
+
+**Workaround (per-site):** ensure the trigger element is stable across the modal's lifecycle — extract the trigger to a memoized component, or stabilize the parent's render output so React reconciliation reuses the trigger DOM node. **Real fix (hook-level):** `useFocusTrap` could optionally accept a CSS selector for the trigger and re-resolve on close (find the current DOM element matching the selector instead of relying on the stale ref). Future-session work; pairs naturally with A-14's `viewKey` extension as a "v2 hook signature" cluster.
+
+**Relationship to A-16:** A-16 and A-17 manifest the same symptom (focus lands on body after modal close instead of returning to trigger) but the root causes are different: A-16 is structural (trigger is non-focusable element type — fix by converting `<div>` to `<button>`); A-17 is lifecycle (trigger is a focusable element that's been unmounted during the modal cycle — fix by stabilizing the trigger or extending the hook to re-resolve at cleanup time). Same diagnostic question both times: is the trigger a `<button>` or a `<div>`? If `<button>`, A-17. If `<div>`, A-16.
+
+Surfaced during: Cluster 5 batch 2b verification (Session 12).
+
+**A-18 (POLISH, watch item) — Cluster 2 `aria-label` sweep gap on emoji-only buttons with `title=` only.** Surfaced during Cluster 5 batch 2b verification when probing the TeamsPage 🎒 bulk-assign button: it has `title="Assign gear to all teams"` but no `aria-label`. `title` is unreliable for AT — Cluster 2 (Session 11) explicitly fixed `title`-only buttons elsewhere but emoji-only triggers like 🎒 may have been missed because the Cluster 2 grep pattern likely targeted ✕ / ✎ / ⋯ glyph patterns rather than full Unicode emoji. **Quick diagnostic:** `grep -nE '<button[^>]*title=' src/pages/*.jsx` will surface remaining sites. **Fix:** single-line per site, add matching `aria-label`. Possibly multiple emoji-only buttons share the gap; ship as a small polish batch when a session has spare cycles. **Status:** not blocking; surfaced as a coverage gap, not a regression. Surfaced during: Cluster 5 batch 2b verification (Session 12).
+
+---
+
 ### New finding (from Cluster 5 batch 2a verification — Session 12)
 
 **A-16 (POLISH) — `useFocusTrap` focus restoration is a no-op for non-focusable triggers; clickable-div triggers contaminate downstream focus chains.** Surfaced during Cluster 5 batch 2a verification (Session 12). When a modal is opened by a clickable `<div>` (without `tabindex`), the hook correctly snapshots `document.activeElement` as the trigger, but the cleanup's `trigger.focus()` is a no-op because `<div>` without `tabindex` is not focusable. Focus falls to `<body>` instead.
@@ -374,3 +390,72 @@ Layer 1 + Layer 2 caught all five Cluster 4 failure modes that Layer 3 would cat
 ### Final session 11 commit count
 
 5 polish commits + 6 doc commits = **11 net commits**. 9 a11y findings closed live, OPS-02 process rule filed, A-12 carryforward filed, Cluster 5 architecture and pilot site documented in advance for Session 12.
+
+---
+
+## Cluster 5 close-out (Session 12 — structurally complete)
+
+### Shipped this cluster
+
+**40 component-adoptions of `useFocusTrap` across 15 routed page files**, plus the hook itself + decision-tree JSDoc.
+
+| Phase | Sites | Files | Commit |
+|---|---:|---:|---|
+| Pilot — BagTemplatesPage `TemplateModal` | 1 | 1 | `fa2c85e` |
+| Hook patch — `initialFocusRef` parameter (pre-sweep fix from pilot) | — | — | `58f0c4e` |
+| Batch 1 — LocationsPage + EquipmentPage representative sites + JSDoc | 5 | 2 | `0c339e8` |
+| Batch 2a — 8 medium files + INFO+ACTIONS rule extension | 17 | 10 | `5f737df` |
+| Batch 2b — EquipmentPage + TeamsPage heavy-lift | 17 | 2 | `3416378` |
+| **Total adopted** | **40** | **15** | |
+
+Plus **1 deferred** (A-13 MembersPage inline modal extraction) + **7 orphan-skipped** (KitBuilderPage / AssignmentsPage / CategoriesPage per DEV-10 deletion plan).
+
+### Empirically verified
+
+~13 of 40 adopted sites verified via DOM + behavioral keyboard-nav across all 4 phases:
+- TemplateModal (pilot, Layer 1-3 incl. VoiceOver hand-off)
+- AddLocationModal, EditLocationModal, RemoveModal, HistoryModal (batch 1 sample)
+- MembersPage AddMemberModal, TreasurerPage AddTransactionModal, BoardPage PositionDetailModal (both branches), BoardPage InviteModal (batch 2a sample)
+- EquipmentPage ReceiveModal, TeamsPage AddSportModal, TeamsPage AssignGearModal (multi-view view-switch test), TeamsPage BulkAssignModal (batch 2b sample)
+
+Pattern confidence is robust: every decision-tree branch (FORM, INFO+ACTIONS, multi-view two-overlay, multi-view single-overlay) has at least one empirically-verified site.
+
+### Hook design decisions ratified
+
+- **Empty-deps `useEffect`** + **`onCloseRef` pattern** — listener identity stable across parent re-renders (caught structurally in pilot pre-design).
+- **`initialFocusRef` parameter** — added pre-sweep after pilot caught close-X-default issue. Optional; falls back to first focusable.
+- **Decision tree** — FORM / INFO-ONLY / PURE CONFIRMATION / INFO+ACTIONS / FORM-with-destructive-primary, with **Principle line per rule** (so future contributors can extrapolate to edge cases).
+- **Visibility filter** — `offsetWidth || offsetHeight || getClientRects().length`. Catches `display: none` reliably; doesn't catch `visibility: hidden` (gap noted but didn't surface during sweep).
+
+### Carry-forward findings (5 audit IDs)
+
+- **A-13** — MembersPage inline modal extraction (~30-line refactor before adoption)
+- **A-14** — Multi-view modals don't re-fire initial focus on view switch (6 affected sites; documented gap; hook signature `viewKey` extension is future-session work)
+- **A-15** — Modal-stacking: Esc closes both nested and parent modal (modal-stack registry future-session work)
+- **A-16** — Focus restoration no-op for clickable-`<div>` triggers (BoardPage `PositionCard` primary case; extends A-03's scope)
+- **A-17** (new this session) — Focus restoration no-op when trigger `<button>` re-renders during modal lifecycle (TeamsPage `BulkAssignModal` empirically confirmed; TreasurerPage `AddTransactionModal` likely; same fingerprint as A-16's Treasurer-watch-item, now confirmed as a distinct root cause)
+- **A-18** (new this session, watch item) — Cluster 2 `aria-label` sweep gap on emoji-only `<button>` elements with `title=` only (TeamsPage 🎒 bulk-assign primary case; quick polish batch)
+
+A-14 + A-17 pair naturally as a "v2 hook signature" cluster — both want hook-level extensions (`viewKey` for A-14, `triggerSelector` or trigger-ref-resolution-at-cleanup for A-17). Future session.
+
+### Methodology refinements ratified
+
+- **Synthetic KeyboardEvent dispatch** is the canonical verification technique for keydown listeners on modals. Chrome devtools key action doesn't deliver Esc to `document`/`window` listeners when focus is in a modal input. Use `dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))` instead.
+- **Code-review the diff before believing a regression report.** Byte-identical-diff observation in the false-Escape-regression episode saved a wrong fix-forward commit.
+- **File-boundary structural insurance** — splitting batch 2 into 2a/2b at file boundary added a third pre-sweep checkpoint at zero cost. Pilot-then-sweep cadence caught 3 issues this cluster (initial-focus close-X bug, Treasurer focus-restore anomaly later confirmed as A-17, JSDoc decision-tree extensions refined twice from feedback).
+- **Real keyboard activation over programmatic click** — use Tab+Enter to open modals during verification, not raw `.click()`, to avoid stale-`document.activeElement` snapshot artifacts.
+- **State-checking JSON dumps run BEFORE any navigate that follows them** — methodology discipline added mid-session after a phantom failure.
+
+### Session 12 commit count (Cluster 5 + adjacent)
+
+- 5 polish commits (pilot, hook patch, batch 1, batch 2a, batch 2b) + this commit's A-12 single-line fix = 6 polish
+- 5 doc commits (A-13/14/15, A-16, A-17 + A-18 + this close-out) — JSDoc INFO+ACTIONS rule extension lived in batch 2a polish
+
+Cluster 5 + adjacent = ~11 commits. Substantial session. Hook design + 40-site sweep + 5 audit findings filed (A-13/14/15/16/17 + A-18 watch item) + multiple methodology refinements.
+
+### What's left after Cluster 5 close
+
+- **A-12** (NewTicketPage label-textarea association) — single-line polish, lands in this session as the last code change.
+- Future a11y sessions: A-13 (inline-modal extraction + adoption), A-14 + A-17 paired (v2 hook signature), A-15 (modal-stack registry), A-16 (clickable-div → button conversions across BoardPage), A-18 (emoji-button aria-label sweep).
+
+After A-12 ships, **accessibility is closed for this session** modulo carry-forwards. Per the broader plan: 7 small DEV-N follow-ups (DEV-34/35/36/37/40/43/44) come next, then orphan resolution (DEV-10), then MISSING-tier features (UX-10, CSV exports, resend invitation).
