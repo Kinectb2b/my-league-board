@@ -174,35 +174,12 @@ export default function MembersPage() {
 
         {/* Assign Position Modal */}
         {assigningPosition && (
-          <div className="modal-overlay" onClick={() => setAssigningPosition(null)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
-              <div className="modal-header">
-                <h2>Assign {assigningPosition.title}</h2>
-                <button className="btn-icon" onClick={() => setAssigningPosition(null)} aria-label="Close">✕</button>
-              </div>
-              <div className="modal-form">
-                <p className="text-muted" style={{ marginBottom: '1rem' }}>{assigningPosition.description}</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  {members.map(m => (
-                    <button key={m.id} onClick={() => { assignPosition(assigningPosition.id, m.profile_id); setAssigningPosition(null) }} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '0.65rem 0.75rem', background: 'var(--gray-50)', border: '1px solid var(--gray-200)',
-                      borderRadius: 'var(--radius)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left'
-                    }}>
-                      <div>
-                        <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{m.profiles?.full_name || 'Unknown'}</div>
-                        <div className="text-muted" style={{ fontSize: '0.75rem' }}>{m.profiles?.email}</div>
-                      </div>
-                      <span style={{ color: 'var(--green-600)', fontWeight: 500, fontSize: '0.8rem' }}>Assign →</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="modal-actions" style={{ marginTop: '1rem' }}>
-                  <button className="btn-secondary" onClick={() => setAssigningPosition(null)}>Cancel</button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <AssignPositionModal
+            position={assigningPosition}
+            members={members}
+            onAssign={(profileId) => { assignPosition(assigningPosition.id, profileId); setAssigningPosition(null) }}
+            onClose={() => setAssigningPosition(null)}
+          />
         )}
 
         {/* Add Member Modal */}
@@ -247,6 +224,42 @@ export default function MembersPage() {
           }
         `}</style>
     </>
+  )
+}
+
+function AssignPositionModal({ position, members, onAssign, onClose }) {
+  const firstMemberRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: firstMemberRef })
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="mem-assign-pos-modal-title">
+        <div className="modal-header">
+          <h2 id="mem-assign-pos-modal-title">Assign {position.title}</h2>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+        <div className="modal-form">
+          <p className="text-muted" style={{ marginBottom: '1rem' }}>{position.description}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {members.map((m, idx) => (
+              <button key={m.id} ref={idx === 0 ? firstMemberRef : null} onClick={() => onAssign(m.profile_id)} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.65rem 0.75rem', background: 'var(--gray-50)', border: '1px solid var(--gray-200)',
+                borderRadius: 'var(--radius)', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left'
+              }}>
+                <div>
+                  <div style={{ fontWeight: 500, fontSize: '0.9rem' }}>{m.profiles?.full_name || 'Unknown'}</div>
+                  <div className="text-muted" style={{ fontSize: '0.75rem' }}>{m.profiles?.email}</div>
+                </div>
+                <span style={{ color: 'var(--green-600)', fontWeight: 500, fontSize: '0.8rem' }}>Assign →</span>
+              </button>
+            ))}
+          </div>
+          <div className="modal-actions" style={{ marginTop: '1rem' }}>
+            <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
