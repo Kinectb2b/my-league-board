@@ -205,7 +205,7 @@ export default function LocationsPage() {
     <>
         <div className="page-header">
           <div>
-            <h1>Storage locations</h1>
+            <h1>Locations</h1>
             <p className="text-muted">{locations.length} locations · {totalStocked} allocated · {totalUnallocated > 0 ? `${totalUnallocated} unallocated` : 'all allocated'}</p>
           </div>
           {canEdit && <div className="header-actions">

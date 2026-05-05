@@ -83,7 +83,14 @@ export default function TicketDetailPage() {
       rawTicket.resolver = { full_name: nameMap[rawTicket.resolved_by] || null }
     }
     setTicket(rawTicket)
-    setComments(rawComments.map(c => ({ ...c, author: { full_name: nameMap[c.author_id] || null } })))
+    setComments(rawComments.map(c => ({
+      ...c,
+      actor_label: resolveActorLabel({
+        actorId: c.author_id,
+        currentUserId: user?.id,
+        fullName: nameMap[c.author_id],
+      }),
+    })))
     setEvents(rawEvents.map(e => ({
       ...e,
       actor_label: resolveActorLabel({
@@ -262,7 +269,7 @@ export default function TicketDetailPage() {
                   return (
                     <div key={`c-${c.id}`} className="tkt-comment">
                       <div className="tkt-comment-header">
-                        <strong style={{ fontSize: '0.85rem' }}>{c.author?.full_name || 'Unknown'}</strong>
+                        <strong style={{ fontSize: '0.85rem' }}>{c.actor_label || 'Unknown'}</strong>
                         <span className="text-muted" style={{ fontSize: '0.75rem' }}>{timeAgo(c.created_at)}</span>
                       </div>
                       <div style={{ whiteSpace: 'pre-wrap', fontSize: '0.85rem', lineHeight: 1.5 }}>{c.body}</div>

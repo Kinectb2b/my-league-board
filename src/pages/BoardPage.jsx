@@ -187,7 +187,7 @@ function PositionCard({ position, canEdit, pendingInvite, onSelect, onInvite }) 
               <span style={{ fontSize: '0.6rem', background: 'var(--green-50)', color: 'var(--green-700)', padding: '0.1rem 0.4rem', borderRadius: '6px', fontWeight: 500 }}>Required</span>
             )}
             {roleBadges.map(r => (
-              <span key={r} style={{ fontSize: '0.6rem', background: 'var(--gray-100)', color: 'var(--gray-600)', padding: '0.1rem 0.4rem', borderRadius: '6px' }}>{r}</span>
+              <span key={r} style={{ fontSize: '0.6rem', background: 'var(--gray-100)', color: 'var(--gray-600)', padding: '0.1rem 0.4rem', borderRadius: '6px' }}>{formatRoleLabel(r)}</span>
             ))}
           </div>
         </div>
@@ -269,7 +269,7 @@ function PositionDetailModal({ position, members, pendingInvite, canEdit, onClos
             )}
             {roleBadges.map(r => (
               <span key={r} style={{ fontSize: '0.7rem', background: 'var(--gray-100)', color: 'var(--gray-600)', padding: '0.15rem 0.5rem', borderRadius: '6px' }}>
-                Role: {r}
+                Role: {formatRoleLabel(r)}
               </span>
             ))}
           </div>
