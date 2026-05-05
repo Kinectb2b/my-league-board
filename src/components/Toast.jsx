@@ -5,10 +5,11 @@ const ToastContext = createContext()
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([])
 
-  const addToast = useCallback((message, type = 'success') => {
+  const addToast = useCallback((message, type = 'success', { action, duration } = {}) => {
     const id = Date.now()
-    setToasts(prev => [...prev, { id, message, type }])
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000)
+    setToasts(prev => [...prev, { id, message, type, action }])
+    const timeout = duration ?? (action ? 5000 : 3000)
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), timeout)
   }, [])
 
   return (
@@ -30,6 +31,21 @@ export function ToastProvider({ children }) {
           >
             <span aria-hidden="true">{t.type === 'success' ? '✓' : t.type === 'error' ? '✕' : 'ℹ'}</span>
             <span>{t.message}</span>
+            {t.action && (
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    t.action.onClick()
+                  } finally {
+                    setToasts(prev => prev.filter(x => x.id !== t.id))
+                  }
+                }}
+                style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'inherit', font: 'inherit', textDecoration: 'underline', cursor: 'pointer', padding: '0 0.25rem' }}
+              >
+                {t.action.label}
+              </button>
+            )}
           </div>
         ))}
       </div>

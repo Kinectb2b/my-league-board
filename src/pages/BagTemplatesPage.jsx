@@ -22,6 +22,7 @@ export default function BagTemplatesPage() {
   const [editing, setEditing] = useState(null)
   const [filterSport, setFilterSport] = useState('')
   const [filterDivision, setFilterDivision] = useState('')
+  const [hiddenIds, setHiddenIds] = useState(() => new Set())
 
   // Permission guard — redirect if not admin or equipment_manager
   useEffect(() => {
@@ -52,15 +53,42 @@ export default function BagTemplatesPage() {
     setLoading(false)
   }
 
-  async function deleteTemplate(id, name) {
-    if (!confirm(`Delete "${name}"? This won't affect teams that already have bags from this template.`)) return
-    const { error: itemsErr } = await supabase.from('kit_template_items').delete().eq('kit_template_id', id)
-    if (itemsErr) { addToast(friendlyError(itemsErr), 'error'); return }
-    const { error: tmplErr } = await supabase.from('kit_templates').delete().eq('id', id)
-    if (tmplErr) { addToast(friendlyError(tmplErr), 'error'); return }
-    addToast('Template deleted')
-    logActivity(currentOrg.id, 'deleted', 'template', name)
-    fetchAll()
+  function deleteTemplate(id, name) {
+    // Delayed-delete with undo. Hide locally now; actual DB delete fires after
+    // 5s unless the toast's Undo action cancels it. If the user navigates away
+    // mid-window, the timer fires anyway (matches Gmail/Slack pattern).
+    setHiddenIds(prev => new Set([...prev, id]))
+    let cancelled = false
+    addToast(`Template "${name}" deleted`, 'info', {
+      action: {
+        label: 'Undo',
+        onClick: () => {
+          cancelled = true
+          setHiddenIds(prev => {
+            const next = new Set(prev)
+            next.delete(id)
+            return next
+          })
+        },
+      },
+    })
+    setTimeout(async () => {
+      if (cancelled) return
+      const { error: itemsErr } = await supabase.from('kit_template_items').delete().eq('kit_template_id', id)
+      if (itemsErr) {
+        addToast(friendlyError(itemsErr), 'error')
+        setHiddenIds(prev => { const next = new Set(prev); next.delete(id); return next })
+        return
+      }
+      const { error: tmplErr } = await supabase.from('kit_templates').delete().eq('id', id)
+      if (tmplErr) {
+        addToast(friendlyError(tmplErr), 'error')
+        setHiddenIds(prev => { const next = new Set(prev); next.delete(id); return next })
+        return
+      }
+      logActivity(currentOrg.id, 'deleted', 'template', name)
+      fetchAll()
+    }, 5000)
   }
 
   async function duplicateTemplate(tmpl) {
@@ -97,8 +125,9 @@ export default function BagTemplatesPage() {
     fetchAll()
   }
 
-  // Filter templates by sport and division
+  // Filter templates by sport and division (hiddenIds applied for delete-with-undo window).
   const filteredTemplates = templates.filter(t => {
+    if (hiddenIds.has(t.id)) return false
     if (filterSport && t.sport_type_id !== filterSport) return false
     if (filterDivision && t.division_name !== filterDivision) return false
     return true
