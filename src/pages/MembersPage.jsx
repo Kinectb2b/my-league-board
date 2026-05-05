@@ -141,7 +141,7 @@ export default function MembersPage() {
                       <td>{m.profiles?.email}</td>
                       <td>
                         {canEdit && m.profile_id !== user.id ? (
-                          <select value={m.role} onChange={e => changeRole(m.id, e.target.value)} style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', fontFamily: 'inherit', background: 'white' }}>
+                          <select value={m.role} onChange={e => changeRole(m.id, e.target.value)} className="mp-role-select" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', fontFamily: 'inherit', background: 'white' }}>
                             {PRIMARY_MEMBER_ROLES.map(role => (
                               <option key={role} value={role}>{formatRoleLabel(role)}</option>
                             ))}
@@ -225,6 +225,7 @@ export default function MembersPage() {
           @media (max-width: 768px) {
             .mp-members-table { min-width: 0; }
             .mp-remove-col { display: none; }
+            .mp-role-select { min-height: 44px; }
             .mp-remove-mobile {
               display: inline-flex;
               align-items: center;
@@ -237,7 +238,7 @@ export default function MembersPage() {
               font-size: 0.8rem;
               font-family: inherit;
               cursor: pointer;
-              min-height: 36px;
+              min-height: 44px;
             }
             .mp-remove-mobile:hover, .mp-remove-mobile:active {
               background: var(--red-100);
