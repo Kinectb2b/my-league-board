@@ -254,7 +254,7 @@ export default function TeamsPage() {
                               <div><h3>{div.name}</h3><span className="division-meta">{div.seasons?.name}{div.age_range ? ` · Ages ${div.age_range}` : ''}</span></div>
                             </div>
                             {canEdit && <div className="division-actions">
-                              <button className="btn-small" onClick={(e) => { e.stopPropagation(); setBulkAssignDivision(div) }} title="Assign gear to all teams">🎒</button>
+                              <button className="btn-small" onClick={(e) => { e.stopPropagation(); setBulkAssignDivision(div) }} aria-label={`Assign gear to all teams in ${div.name}`} title="Assign gear to all teams">🎒</button>
                               <button className="btn-quick-add" onClick={() => { setQuickAddDivisionId(quickAddDivisionId === div.id ? null : div.id); setQuickAddName('') }}>+</button>
                               <button className="btn-icon-sm" onClick={() => setEditingDivision(div)} aria-label={`Edit ${div.name}`}>✎</button>
                               <button className="btn-icon-sm btn-icon-danger" onClick={() => deleteDivision(div.id, div.name)} aria-label={`Delete ${div.name}`}>✕</button>
