@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -6,6 +6,7 @@ import { useToast } from '../components/Toast'
 import { logActivity } from '../lib/activity'
 import { autoAssignBagForNewTeam } from '../lib/autoAssignBag'
 import { BAG_STATUS_CONFIG, getBagStatusConfig } from '../lib/bagStatus'
+import { useFocusTrap } from '../hooks/useFocusTrap'
 import * as Sentry from '@sentry/react'
 
 export default function TeamsPage() {
@@ -334,6 +335,9 @@ export default function TeamsPage() {
 
 function AssignGearModal({ team, templates, onAssign, onClose }) {
   const { currentOrg } = useOrg()
+  const templateSelectRef = useRef(null)
+  const templateNameRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: templateSelectRef })
   const [templateId, setTemplateId] = useState('')
   const [bagTag, setBagTag] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -386,11 +390,11 @@ function AssignGearModal({ team, templates, onAssign, onClose }) {
 
   if (showCreateTemplate) {
     return (
-      <div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Create kit template</h2><button className="btn-icon" onClick={() => setShowCreateTemplate(false)} aria-label="Close">✕</button></div>
+      <div className="modal-overlay" onClick={onClose}><div ref={modalRef} className="modal modal-wide" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-assign-create-tmpl-title">
+        <div className="modal-header"><h2 id="teams-assign-create-tmpl-title">Create kit template</h2><button className="btn-icon" onClick={() => setShowCreateTemplate(false)} aria-label="Close">✕</button></div>
         <form onSubmit={createTemplate} className="modal-form">
           <div className="form-row">
-            <div className="form-group"><label>Template name *</label><input type="text" value={tName} onChange={e => setTName(e.target.value)} placeholder="Standard Baseball Bag" required autoFocus /></div>
+            <div className="form-group"><label>Template name *</label><input ref={templateNameRef} type="text" value={tName} onChange={e => setTName(e.target.value)} placeholder="Standard Baseball Bag" required /></div>
             <div className="form-group"><label>Sport</label><select value={tSport} onChange={e => setTSport(e.target.value)}><option value="">All sports</option>{sportTypes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
           </div>
           <div style={{ border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', padding: '1rem', background: 'var(--gray-50)' }}>
@@ -427,11 +431,11 @@ function AssignGearModal({ team, templates, onAssign, onClose }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}>
-      <div className="modal-header"><h2>Assign gear to {team.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+    <div className="modal-overlay" onClick={onClose}><div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-assign-form-title">
+      <div className="modal-header"><h2 id="teams-assign-form-title">Assign gear to {team.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
       <form onSubmit={handleSubmit} className="modal-form">
         <div className="form-group"><label>Kit template *</label>
-          <select value={templateId} onChange={e => { if (e.target.value === '__new__') { setShowCreateTemplate(true); return }; setTemplateId(e.target.value) }}>
+          <select ref={templateSelectRef} value={templateId} onChange={e => { if (e.target.value === '__new__') { setShowCreateTemplate(true); return }; setTemplateId(e.target.value) }}>
             <option value="">Select a template...</option>
             {localTemplates.map(t => <option key={t.id} value={t.id}>{t.name} ({t.kit_template_items?.length || 0} items)</option>)}
             <option value="__new__">＋ Create new template...</option>
@@ -456,6 +460,8 @@ function AssignGearModal({ team, templates, onAssign, onClose }) {
 }
 
 function GearDetailModal({ team, bag, statusConfig, canEdit, onToggle, onMarkBuilt, onPickup, onReturn, onReplace, onRemove, onDelete, onPrint, onClose }) {
+  const bagTagRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: bagTagRef })
   const [showPickup, setShowPickup] = useState(false)
   const [showReturn, setShowReturn] = useState(false)
   const [showReplace, setShowReplace] = useState(null)
@@ -478,10 +484,10 @@ function GearDetailModal({ team, bag, statusConfig, canEdit, onToggle, onMarkBui
   const packed = items.filter(i => i.is_packed).length
 
   return (
-    <div className="modal-overlay" onClick={onClose}><div className="modal modal-wide" onClick={e => e.stopPropagation()}>
+    <div className="modal-overlay" onClick={onClose}><div ref={modalRef} className="modal modal-wide" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-gear-detail-title">
       <div className="modal-header">
         <div>
-          <h2>{team.name} — Gear</h2>
+          <h2 id="teams-gear-detail-title">{team.name} — Gear</h2>
           <span className="text-muted">{bag.kit_templates?.name}{bag.bag_tag ? ` · Tag: ${bag.bag_tag}` : ''}</span>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
@@ -510,7 +516,7 @@ function GearDetailModal({ team, bag, statusConfig, canEdit, onToggle, onMarkBui
         {['building','built'].includes(bag.status) && canEdit ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
             <label style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--gray-600)' }}>Bag tag:</label>
-            <input type="text" value={bagTag} onChange={e => setBagTag(e.target.value)} onBlur={saveBagTag} placeholder="Enter tag #" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', width: '120px', fontFamily: 'inherit' }} />
+            <input ref={bagTagRef} type="text" value={bagTag} onChange={e => setBagTag(e.target.value)} onBlur={saveBagTag} placeholder="Enter tag #" style={{ fontSize: '0.8rem', padding: '0.2rem 0.5rem', border: '1px solid var(--gray-200)', borderRadius: 'var(--radius)', width: '120px', fontFamily: 'inherit' }} />
           </div>
         ) : bag.bag_tag ? (
           <div style={{ fontSize: '0.8rem', color: 'var(--gray-500)', marginBottom: '0.5rem' }}>Tag: {bag.bag_tag}</div>
@@ -577,6 +583,8 @@ function ChecklistRow({ item, onToggle, onReplace, onRemove, disabled, canRemove
 }
 
 function AddBagItemModal({ bagId, existingItemIds, orgId, onClose }) {
+  const equipmentSelectRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: equipmentSelectRef })
   const [equipment, setEquipment] = useState([])
   const [selectedId, setSelectedId] = useState('')
   const [isRequired, setIsRequired] = useState(true)
@@ -607,12 +615,12 @@ function AddBagItemModal({ bagId, existingItemIds, orgId, onClose }) {
 
   return (
     <div className="modal-overlay" style={{ zIndex: 200 }} onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Add item to bag</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-addbagitem-modal-title">
+        <div className="modal-header"><h2 id="teams-addbagitem-modal-title">Add item to bag</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleAdd} className="modal-form">
           <div className="form-group">
             <label>Equipment item *</label>
-            <select value={selectedId} onChange={e => setSelectedId(e.target.value)} required>
+            <select ref={equipmentSelectRef} value={selectedId} onChange={e => setSelectedId(e.target.value)} required>
               <option value="">Select item...</option>
               {equipment.map(eq => <option key={eq.id} value={eq.id}>{eq.name}{eq.equipment_categories?.name ? ' (' + eq.equipment_categories.name + ')' : ''}</option>)}
             </select>
@@ -635,55 +643,73 @@ function AddBagItemModal({ bagId, existingItemIds, orgId, onClose }) {
 }
 
 function PickupModal({ onConfirm, onClose }) {
+  const nameInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: nameInputRef })
   const [name, setName] = useState('')
-  return (<div className="modal-overlay" style={{ zIndex: 200 }} onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Record pickup</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><div className="modal-form"><div className="form-group"><label>Picked up by *</label><input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Coach or parent name" autoFocus /></div><div className="modal-actions"><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={() => { if (name.trim()) onConfirm(name.trim()) }} disabled={!name.trim()}>Confirm</button></div></div></div></div>)
+  return (<div className="modal-overlay" style={{ zIndex: 200 }} onClick={onClose}><div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-pickup-modal-title"><div className="modal-header"><h2 id="teams-pickup-modal-title">Record pickup</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><div className="modal-form"><div className="form-group"><label>Picked up by *</label><input ref={nameInputRef} type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Coach or parent name" /></div><div className="modal-actions"><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={() => { if (name.trim()) onConfirm(name.trim()) }} disabled={!name.trim()}>Confirm</button></div></div></div></div>)
 }
 
 function ReturnModal({ onConfirm, onClose }) {
+  const condSelectRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: condSelectRef })
   const [cond, setCond] = useState('')
-  return (<div className="modal-overlay" style={{ zIndex: 200 }} onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Record return</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><div className="modal-form"><div className="form-group"><label>Condition</label><select value={cond} onChange={e => setCond(e.target.value)}><option value="">Select...</option><option value="Good - all items present">Good - all items</option><option value="Missing items">Missing items</option><option value="Damaged items">Damaged items</option><option value="Needs cleaning">Needs cleaning</option></select></div><div className="modal-actions"><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={() => onConfirm(cond)}>Confirm return</button></div></div></div></div>)
+  return (<div className="modal-overlay" style={{ zIndex: 200 }} onClick={onClose}><div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-return-modal-title"><div className="modal-header"><h2 id="teams-return-modal-title">Record return</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><div className="modal-form"><div className="form-group"><label>Condition</label><select ref={condSelectRef} value={cond} onChange={e => setCond(e.target.value)}><option value="">Select...</option><option value="Good - all items present">Good - all items</option><option value="Missing items">Missing items</option><option value="Damaged items">Damaged items</option><option value="Needs cleaning">Needs cleaning</option></select></div><div className="modal-actions"><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={() => onConfirm(cond)}>Confirm return</button></div></div></div></div>)
 }
 
 function ReplaceModal({ item, onConfirm, onClose }) {
+  const reasonSelectRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: reasonSelectRef })
   const [reason, setReason] = useState('broken'); const [desc, setDesc] = useState('')
-  return (<div className="modal-overlay" style={{ zIndex: 200 }} onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Replace: {item.equipment_items?.name || item.equipment_categories?.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><div className="modal-form"><div className="form-group"><label>Reason *</label><select value={reason} onChange={e => setReason(e.target.value)}><option value="broken">Broken</option><option value="lost">Lost</option><option value="damaged">Damaged</option><option value="missing">Missing</option><option value="worn_out">Worn out</option><option value="wrong_size">Wrong size</option><option value="other">Other</option></select></div><div className="form-group"><label>Details</label><textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2} placeholder="What happened?" /></div><div className="modal-actions"><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={() => onConfirm(reason, desc)}>Log replacement</button></div></div></div></div>)
+  return (<div className="modal-overlay" style={{ zIndex: 200 }} onClick={onClose}><div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-replace-modal-title"><div className="modal-header"><h2 id="teams-replace-modal-title">Replace: {item.equipment_items?.name || item.equipment_categories?.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><div className="modal-form"><div className="form-group"><label>Reason *</label><select ref={reasonSelectRef} value={reason} onChange={e => setReason(e.target.value)}><option value="broken">Broken</option><option value="lost">Lost</option><option value="damaged">Damaged</option><option value="missing">Missing</option><option value="worn_out">Worn out</option><option value="wrong_size">Wrong size</option><option value="other">Other</option></select></div><div className="form-group"><label>Details</label><textarea value={desc} onChange={e => setDesc(e.target.value)} rows={2} placeholder="What happened?" /></div><div className="modal-actions"><button className="btn-secondary" onClick={onClose}>Cancel</button><button className="btn-primary" onClick={() => onConfirm(reason, desc)}>Log replacement</button></div></div></div></div>)
 }
 
 function AddSportModal({ orgId, onDone, onClose }) {
+  const nameInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: nameInputRef })
   const [name, setName] = useState(''); const [sub, setSub] = useState(false); const [err, setErr] = useState('')
   async function go(e) { e.preventDefault(); setSub(true); const { error } = await supabase.from('sport_types').insert({ organization_id: orgId, name, sort_order: 0 }); if (error) setErr(error.message.includes('duplicate') ? 'Already exists.' : error.message); else onDone(); setSub(false) }
-  return (<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Add sport</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Sport name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} required autoFocus /></div>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Adding...' : 'Add sport'}</button></div></form></div></div>)
+  return (<div className="modal-overlay" onClick={onClose}><div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-addsport-modal-title"><div className="modal-header"><h2 id="teams-addsport-modal-title">Add sport</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Sport name *</label><input ref={nameInputRef} type="text" value={name} onChange={e => setName(e.target.value)} required /></div>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Adding...' : 'Add sport'}</button></div></form></div></div>)
 }
 
 function AddSeasonModal({ orgId, onDone, onClose }) {
+  const nameInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: nameInputRef })
   const [name, setName] = useState(''); const [sd, setSd] = useState(''); const [ed, setEd] = useState(''); const [ia, setIa] = useState(false); const [sub, setSub] = useState(false); const [err, setErr] = useState('')
   async function go(e) { e.preventDefault(); setSub(true); const { error } = await supabase.from('seasons').insert({ organization_id: orgId, name, start_date: sd||null, end_date: ed||null, is_active: ia }); if (error) setErr(error.message.includes('duplicate') ? 'Already exists.' : error.message); else onDone(); setSub(false) }
-  return (<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Add season</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Season name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} required autoFocus /></div><div className="form-row"><div className="form-group"><label>Start</label><input type="date" value={sd} onChange={e => setSd(e.target.value)} /></div><div className="form-group"><label>End</label><input type="date" value={ed} onChange={e => setEd(e.target.value)} /></div></div><label className="toggle-label"><input type="checkbox" checked={ia} onChange={e => setIa(e.target.checked)} /> Active season</label>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Adding...' : 'Add season'}</button></div></form></div></div>)
+  return (<div className="modal-overlay" onClick={onClose}><div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-addseason-modal-title"><div className="modal-header"><h2 id="teams-addseason-modal-title">Add season</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Season name *</label><input ref={nameInputRef} type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-row"><div className="form-group"><label>Start</label><input type="date" value={sd} onChange={e => setSd(e.target.value)} /></div><div className="form-group"><label>End</label><input type="date" value={ed} onChange={e => setEd(e.target.value)} /></div></div><label className="toggle-label"><input type="checkbox" checked={ia} onChange={e => setIa(e.target.checked)} /> Active season</label>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Adding...' : 'Add season'}</button></div></form></div></div>)
 }
 
 function AddDivisionModal({ orgId, seasons, sportTypes, onDone, onClose }) {
+  const nameInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: nameInputRef })
   const [name, setName] = useState(''); const [sid, setSid] = useState(seasons.find(s => s.is_active)?.id||seasons[0]?.id||''); const [spid, setSpid] = useState(sportTypes[0]?.id||''); const [ar, setAr] = useState(''); const [sub, setSub] = useState(false); const [err, setErr] = useState('')
   async function go(e) { e.preventDefault(); setSub(true); const { error } = await supabase.from('divisions').insert({ organization_id: orgId, name, season_id: sid, sport_type_id: spid, age_range: ar||null }); if (error) setErr(error.message); else onDone(); setSub(false) }
-  return (<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Add division</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-row"><div className="form-group"><label>Sport *</label><select value={spid} onChange={e => setSpid(e.target.value)} required>{sportTypes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div className="form-group"><label>Season *</label><select value={sid} onChange={e => setSid(e.target.value)} required>{seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div></div><div className="form-group"><label>Age range</label><input type="text" value={ar} onChange={e => setAr(e.target.value)} placeholder="9-10, 11-12" /></div>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Adding...' : 'Add'}</button></div></form></div></div>)
+  return (<div className="modal-overlay" onClick={onClose}><div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-adddiv-modal-title"><div className="modal-header"><h2 id="teams-adddiv-modal-title">Add division</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Name *</label><input ref={nameInputRef} type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-row"><div className="form-group"><label>Sport *</label><select value={spid} onChange={e => setSpid(e.target.value)} required>{sportTypes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div className="form-group"><label>Season *</label><select value={sid} onChange={e => setSid(e.target.value)} required>{seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div></div><div className="form-group"><label>Age range</label><input type="text" value={ar} onChange={e => setAr(e.target.value)} placeholder="9-10, 11-12" /></div>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Adding...' : 'Add'}</button></div></form></div></div>)
 }
 
 function AddTeamModal({ orgId, divisions, sportTypes, members, onDone, onClose }) {
+  const nameInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: nameInputRef })
   const [name, setName] = useState(''); const [did, setDid] = useState(divisions[0]?.id||''); const [color, setColor] = useState('#1a472a'); const [coachId, setCoachId] = useState(''); const [sub, setSub] = useState(false); const [err, setErr] = useState('')
   const grouped = sportTypes.map(s => ({ sport: s, divs: divisions.filter(d => d.sport_type_id === s.id).sort((a, b) => a.name.localeCompare(b.name)) })).filter(g => g.divs.length > 0)
   async function go(e) { e.preventDefault(); setSub(true); const { data: newTeam, error } = await supabase.from('teams').insert({ organization_id: orgId, name, division_id: did, color, head_coach_id: coachId || null }).select().single(); if (error) setErr(error.message); else onDone(newTeam); setSub(false) }
-  return (<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Add team</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-row"><div className="form-group"><label>Division *</label><select value={did} onChange={e => setDid(e.target.value)} required>{grouped.map(g => <optgroup key={g.sport.id} label={g.sport.name}>{g.divs.map(d => <option key={d.id} value={d.id}>{g.sport.name} / {d.name}</option>)}</optgroup>)}</select></div><div className="form-group"><label>Color</label><input type="color" value={color} onChange={e => setColor(e.target.value)} /></div></div><div className="form-group"><label>Head coach</label><select value={coachId} onChange={e => setCoachId(e.target.value)}><option value="">No coach assigned</option>{members.filter(m => ['admin','equipment_manager','coach'].includes(m.role)).map(m => <option key={m.profile_id} value={m.profile_id}>{m.profiles?.full_name || m.profiles?.email || 'Unknown'}</option>)}</select></div>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Adding...' : 'Add'}</button></div></form></div></div>)
+  return (<div className="modal-overlay" onClick={onClose}><div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-addteam-modal-title"><div className="modal-header"><h2 id="teams-addteam-modal-title">Add team</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Name *</label><input ref={nameInputRef} type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-row"><div className="form-group"><label>Division *</label><select value={did} onChange={e => setDid(e.target.value)} required>{grouped.map(g => <optgroup key={g.sport.id} label={g.sport.name}>{g.divs.map(d => <option key={d.id} value={d.id}>{g.sport.name} / {d.name}</option>)}</optgroup>)}</select></div><div className="form-group"><label>Color</label><input type="color" value={color} onChange={e => setColor(e.target.value)} /></div></div><div className="form-group"><label>Head coach</label><select value={coachId} onChange={e => setCoachId(e.target.value)}><option value="">No coach assigned</option>{members.filter(m => ['admin','equipment_manager','coach'].includes(m.role)).map(m => <option key={m.profile_id} value={m.profile_id}>{m.profiles?.full_name || m.profiles?.email || 'Unknown'}</option>)}</select></div>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Adding...' : 'Add'}</button></div></form></div></div>)
 }
 
 function EditTeamModal({ team, divisions, members, onDone, onClose }) {
+  const nameInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: nameInputRef })
   const [name, setName] = useState(team.name); const [did, setDid] = useState(team.division_id); const [color, setColor] = useState(team.color||'#1a472a'); const [coachId, setCoachId] = useState(team.head_coach_id||''); const [sub, setSub] = useState(false); const [err, setErr] = useState('')
   async function go(e) { e.preventDefault(); setSub(true); const { error } = await supabase.from('teams').update({ name, division_id: did, color, head_coach_id: coachId || null }).eq('id', team.id); if (error) setErr(error.message); else onDone(); setSub(false) }
-  return (<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Edit team</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-row"><div className="form-group"><label>Division *</label><select value={did} onChange={e => setDid(e.target.value)} required>{[...divisions].sort((a, b) => `${a.sport_types?.name} / ${a.name}`.localeCompare(`${b.sport_types?.name} / ${b.name}`)).map(d => <option key={d.id} value={d.id}>{d.sport_types?.name} / {d.name}</option>)}</select></div><div className="form-group"><label>Color</label><input type="color" value={color} onChange={e => setColor(e.target.value)} /></div></div><div className="form-group"><label>Head coach</label><select value={coachId} onChange={e => setCoachId(e.target.value)}><option value="">No coach assigned</option>{members.filter(m => ['admin','equipment_manager','coach'].includes(m.role)).map(m => <option key={m.profile_id} value={m.profile_id}>{m.profiles?.full_name || m.profiles?.email || 'Unknown'}</option>)}</select></div>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Saving...' : 'Save'}</button></div></form></div></div>)
+  return (<div className="modal-overlay" onClick={onClose}><div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-editteam-modal-title"><div className="modal-header"><h2 id="teams-editteam-modal-title">Edit team</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Name *</label><input ref={nameInputRef} type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-row"><div className="form-group"><label>Division *</label><select value={did} onChange={e => setDid(e.target.value)} required>{[...divisions].sort((a, b) => `${a.sport_types?.name} / ${a.name}`.localeCompare(`${b.sport_types?.name} / ${b.name}`)).map(d => <option key={d.id} value={d.id}>{d.sport_types?.name} / {d.name}</option>)}</select></div><div className="form-group"><label>Color</label><input type="color" value={color} onChange={e => setColor(e.target.value)} /></div></div><div className="form-group"><label>Head coach</label><select value={coachId} onChange={e => setCoachId(e.target.value)}><option value="">No coach assigned</option>{members.filter(m => ['admin','equipment_manager','coach'].includes(m.role)).map(m => <option key={m.profile_id} value={m.profile_id}>{m.profiles?.full_name || m.profiles?.email || 'Unknown'}</option>)}</select></div>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Saving...' : 'Save'}</button></div></form></div></div>)
 }
 
 function EditDivisionModal({ division, seasons, sportTypes, onDone, onClose }) {
+  const nameInputRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: nameInputRef })
   const [name, setName] = useState(division.name); const [sid, setSid] = useState(division.season_id); const [spid, setSpid] = useState(division.sport_type_id); const [ar, setAr] = useState(division.age_range||''); const [sub, setSub] = useState(false); const [err, setErr] = useState('')
   async function go(e) { e.preventDefault(); setSub(true); const { error } = await supabase.from('divisions').update({ name, season_id: sid, sport_type_id: spid, age_range: ar||null }).eq('id', division.id); if (error) setErr(error.message); else onDone(); setSub(false) }
-  return (<div className="modal-overlay" onClick={onClose}><div className="modal" onClick={e => e.stopPropagation()}><div className="modal-header"><h2>Edit division</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Name *</label><input type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-row"><div className="form-group"><label>Sport *</label><select value={spid} onChange={e => setSpid(e.target.value)} required>{sportTypes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div className="form-group"><label>Season *</label><select value={sid} onChange={e => setSid(e.target.value)} required>{seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div></div><div className="form-group"><label>Age range</label><input type="text" value={ar} onChange={e => setAr(e.target.value)} /></div>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Saving...' : 'Save'}</button></div></form></div></div>)
+  return (<div className="modal-overlay" onClick={onClose}><div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-editdiv-modal-title"><div className="modal-header"><h2 id="teams-editdiv-modal-title">Edit division</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div><form onSubmit={go} className="modal-form"><div className="form-group"><label>Name *</label><input ref={nameInputRef} type="text" value={name} onChange={e => setName(e.target.value)} required /></div><div className="form-row"><div className="form-group"><label>Sport *</label><select value={spid} onChange={e => setSpid(e.target.value)} required>{sportTypes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div><div className="form-group"><label>Season *</label><select value={sid} onChange={e => setSid(e.target.value)} required>{seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div></div><div className="form-group"><label>Age range</label><input type="text" value={ar} onChange={e => setAr(e.target.value)} /></div>{err && <div className="form-error">{err}</div>}<div className="modal-actions"><button type="button" className="btn-secondary" onClick={onClose}>Cancel</button><button type="submit" className="btn-primary" disabled={sub}>{sub ? 'Saving...' : 'Save'}</button></div></form></div></div>)
 }
 
 function printChecklist(team, bag) {
@@ -729,6 +755,8 @@ function printChecklist(team, bag) {
 }
 
 function BulkAssignModal({ division, teams, templates, existingBags, filterSeason, onAssign, onClose }) {
+  const templateSelectRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: templateSelectRef })
   const [templateId, setTemplateId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [results, setResults] = useState(null)
@@ -755,9 +783,9 @@ function BulkAssignModal({ division, teams, templates, existingBags, filterSeaso
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="teams-bulk-modal-title">
         <div className="modal-header">
-          <h2>Assign gear to {division.name}</h2>
+          <h2 id="teams-bulk-modal-title">Assign gear to {division.name}</h2>
           <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
         <div className="modal-form">
@@ -780,7 +808,7 @@ function BulkAssignModal({ division, teams, templates, existingBags, filterSeaso
               ) : (
                 <div className="form-group">
                   <label>Kit template *</label>
-                  <select value={templateId} onChange={e => setTemplateId(e.target.value)} required>
+                  <select ref={templateSelectRef} value={templateId} onChange={e => setTemplateId(e.target.value)} required>
                     <option value="">Select a template...</option>
                     {templates.map(t => <option key={t.id} value={t.id}>{t.name} ({t.kit_template_items?.length || 0} items)</option>)}
                   </select>

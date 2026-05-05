@@ -1061,6 +1061,8 @@ const equipmentStyles = `
 // =================================================================
 
 function ReceiveModal({ item, items, locations, orgId, userId, onDone, onClose, addToast }) {
+  const firstFocusableRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: firstFocusableRef })
   const [selectedItemId, setSelectedItemId] = useState(item?.id || '')
   const [toLocationId, setToLocationId] = useState('')
   const [cases, setCases] = useState(0)
@@ -1099,8 +1101,8 @@ function ReceiveModal({ item, items, locations, orgId, userId, onDone, onClose, 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Receive stock</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="eq-receive-modal-title">
+        <div className="modal-header"><h2 id="eq-receive-modal-title">Receive stock</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>Item</label>
@@ -1118,7 +1120,7 @@ function ReceiveModal({ item, items, locations, orgId, userId, onDone, onClose, 
           </div>
           <div className="form-group">
             <label>To location</label>
-            <select value={toLocationId} onChange={e => setToLocationId(e.target.value)} required>
+            <select ref={firstFocusableRef} value={toLocationId} onChange={e => setToLocationId(e.target.value)} required>
               <option value="">Select location...</option>
               {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
             </select>
@@ -1152,6 +1154,8 @@ function ReceiveModal({ item, items, locations, orgId, userId, onDone, onClose, 
 }
 
 function TransferModal({ item, locations, stockData, orgId, userId, onDone, onClose, addToast }) {
+  const fromLocationRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: fromLocationRef })
   const itemStock = stockData.filter(s => s.equipment_item_id === item.id && s.quantity > 0)
   const [fromLocationId, setFromLocationId] = useState('')
   const [toLocationId, setToLocationId] = useState('')
@@ -1186,12 +1190,12 @@ function TransferModal({ item, locations, stockData, orgId, userId, onDone, onCl
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Transfer: {item.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="eq-transfer-modal-title">
+        <div className="modal-header"><h2 id="eq-transfer-modal-title">Transfer: {item.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>From location</label>
-            <select value={fromLocationId} onChange={e => { setFromLocationId(e.target.value); setQuantity(1) }} required>
+            <select ref={fromLocationRef} value={fromLocationId} onChange={e => { setFromLocationId(e.target.value); setQuantity(1) }} required>
               <option value="">Select...</option>
               {itemStock.map(s => {
                 const loc = locations.find(l => l.id === s.storage_location_id)
@@ -1317,6 +1321,8 @@ function RemoveModal({ item, locations, stockData, orgId, userId, onDone, onClos
 }
 
 function AuditModal({ item, locations, stockData, orgId, userId, onDone, onClose, addToast }) {
+  const locationSelectRef = useRef(null)
+  const modalRef = useFocusTrap({ onClose, initialFocusRef: locationSelectRef })
   const itemStock = stockData.filter(s => s.equipment_item_id === item.id)
   const [fromLocationId, setFromLocationId] = useState('')
   const [actualCount, setActualCount] = useState('')
@@ -1350,12 +1356,12 @@ function AuditModal({ item, locations, stockData, orgId, userId, onDone, onClose
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header"><h2>Audit: {item.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+      <div ref={modalRef} className="modal" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="eq-audit-modal-title">
+        <div className="modal-header"><h2 id="eq-audit-modal-title">Audit: {item.name}</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
         <form onSubmit={handleSubmit} className="modal-form">
           <div className="form-group">
             <label>Location</label>
-            <select value={fromLocationId} onChange={e => { setFromLocationId(e.target.value); setActualCount('') }} required>
+            <select ref={locationSelectRef} value={fromLocationId} onChange={e => { setFromLocationId(e.target.value); setActualCount('') }} required>
               <option value="">Select...</option>
               {itemStock.map(s => {
                 const loc = locations.find(l => l.id === s.storage_location_id)
@@ -1622,6 +1628,7 @@ function ItemDetailModal({ item, locationStock, locations, canEdit, onClose }) {
 }
 
 function SmartAddModal({ item, categories, locations, orgId, onSave, onClose }) {
+  const modalRef = useFocusTrap({ onClose })
   const [equipType, setEquipType] = useState(null)
   const [form, setForm] = useState({
     name: item?.name || '', category_id: item?.category_id || '', quantity: item?.quantity || 1,
@@ -1688,8 +1695,8 @@ function SmartAddModal({ item, categories, locations, orgId, onSave, onClose }) 
   if (!equipType && !item) {
     return (
       <div className="modal-overlay" onClick={onClose}>
-        <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
-          <div className="modal-header"><h2>What are you adding?</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
+        <div ref={modalRef} className="modal modal-wide" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="eq-smartadd-picker-title">
+          <div className="modal-header"><h2 id="eq-smartadd-picker-title">What are you adding?</h2><button className="btn-icon" onClick={onClose} aria-label="Close">✕</button></div>
           <div className="type-grid">
             {EQUIPMENT_TYPES.map(t => (
               <button key={t.id} className="type-card" onClick={() => setEquipType(t.id)}>
@@ -1707,9 +1714,9 @@ function SmartAddModal({ item, categories, locations, orgId, onSave, onClose }) 
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal modal-wide" onClick={e => e.stopPropagation()}>
+      <div ref={modalRef} className="modal modal-wide" onClick={e => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="eq-smartadd-form-title">
         <div className="modal-header">
-          <h2>{item ? 'Edit equipment' : 'Add equipment'}</h2>
+          <h2 id="eq-smartadd-form-title">{item ? 'Edit equipment' : 'Add equipment'}</h2>
           <div style={{display:'flex',gap:'0.5rem',alignItems:'center'}}>
             {!item && <button className="btn-secondary btn-sm" onClick={() => setEquipType(null)}>← Change type</button>}
             <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
