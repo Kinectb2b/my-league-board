@@ -459,3 +459,59 @@ Cluster 5 + adjacent = ~11 commits. Substantial session. Hook design + 40-site s
 - Future a11y sessions: A-13 (inline-modal extraction + adoption), A-14 + A-17 paired (v2 hook signature), A-15 (modal-stack registry), A-16 (clickable-div → button conversions across BoardPage), A-18 (emoji-button aria-label sweep).
 
 After A-12 ships, **accessibility is closed for this session** modulo carry-forwards. Per the broader plan: 7 small DEV-N follow-ups (DEV-34/35/36/37/40/43/44) come next, then orphan resolution (DEV-10), then MISSING-tier features (UX-10, CSV exports, resend invitation).
+
+---
+
+## Session 13 close-out (polish-cleanup bundle complete)
+
+### Shipped this session
+
+**8 audit IDs closed (13 findings) across 6 commits.**
+
+| Cluster | IDs | Commits |
+|---|---|---|
+| Cluster 1 — UX/copy + a11y label one-liners | DEV-37, DEV-40, DEV-44, A-18 | 2 commits (`d013702`, `96ac056`) |
+| Cluster 2 — toast + error pattern work | DEV-35 (×7 sites), DEV-34 (+ Toast API extension) | 2 commits (`907839a`, `1bdf8de`) |
+| Cluster 3 — paired tap-target bump | DEV-43 | 1 commit (`199b8a1`) |
+| Session close-out (this commit) | — | 1 commit |
+| **Total** | **8 IDs / 13 findings** | **6 commits** |
+
+### Empirically verified
+
+- **Cluster 1 (3 of 4 sites):** DEV-40 BoardPage role pills (7 formatted labels confirmed, zero raw keys), DEV-44 /locations h1 (three-surface alignment), A-18 TeamsPage 🎒 button (8 contextual aria-labels confirmed).
+- **Cluster 2 (DEV-34 fully empirical, DEV-35 code-review carries):** DEV-34 full happy + cancel + commit paths verified on `/bag-templates` with network-request tracing, including closure-isolation under rapid double-delete.
+- **Cluster 3 (1 of 1 site, mobile + desktop):** Mobile DOM dimensions GREEN at exactly 44px on both elements; desktop covered by static reasoning (Chrome window-state anomaly blocked direct empirical confirmation, but @media-block CSS structure guarantees mobile-only application).
+
+### Code-review carries
+
+- **DEV-37 TicketDetailPage comment actor label** — Demotte data has 0 tickets across all tabs; same data-state limitation flagged in Session 11 a11y verification. resolveActorLabel pattern was empirically verified in Session 7 (DEV-32 events surface) — pattern is identical.
+- **DEV-35 (4 of 7 sites):** AuthPage carried by code review; MyTeamPage / MembersPage / OrgSetupPage / AcceptInvitePage data-blocked. friendlyError translator was empirically verified in earlier sessions; the 7 wraps are 1-line pattern repeats.
+
+### Hook design / API decisions ratified
+
+- **Toast API extends with optional action param.** `addToast(message, type, { action, duration } = {})`. Purely additive; existing 50+ callers unchanged. Action button rendered inline (right-aligned, transparent bg, underlined text). Click handler wraps user's onClick in `try/finally` so a throwing handler still dismisses the toast — defensive against future callers.
+- **Delayed-delete pattern over optimistic-delete-and-reinsert** for DEV-34. Deletion is hidden locally (filter from list render) immediately on click; actual DB delete fires after 5s timer unless undo button cancels it. No DB re-insert path, no FK referential-integrity concerns. Matches Gmail/Slack/Linear pattern.
+- **Timer-on-navigation: option 1 (timer fires).** When user navigates away mid-window, supabase.delete completes per design. React 18 logs a setState-on-unmounted warning for the local state setters but doesn't fail. Accepting the warning is preferred over guarding with isMounted ref or AbortController.
+
+### Methodology refinements added this session
+
+- **Toast race-condition during rapid verification.** When testing toast-firing actions in quick succession, the prior toast's auto-dismiss window (3s default, 5s with action) can collide with the next assertion. Fix: wait 3+ seconds between toast-firing actions, OR filter toasts by Undo-button-presence (`querySelector('.toast button[type="button"]')`) when verifying action-toasts specifically.
+- **formatRoleLabel Title Case observation.** `formatRoleLabel` produces Title Case ("Equipment Manager"), not sentence case ("Equipment manager"). Consistent across app (members + board + invitation surfaces). Not a divergence; just a casing convention worth recording. If a future tone-consistency pass wants to align role labels to sentence case (matching page titles + h2s per Session 9 work), that would be a `formatRoleLabel` behavior change touching every consumer. Significantly out of scope for any single cluster; possible future audit ID if the inconsistency surfaces as a real UX issue.
+- **DEV-37 fetch-shape change documented in commit body.** Comments fetch now resolves to `c.actor_label` via `resolveActorLabel`; the prior `c.author?.full_name` shape is no longer populated. Future code reading the comments array should use `c.actor_label` or call `resolveActorLabel` directly. Documented in commit `d013702`.
+- **Window-resize unreliability persisted through Session 13** (same anomaly noted in Session 11 a11y verification). DOM-only verification with media-query-state introspection covers what window-resize used to do; static reasoning fallback acceptable when CSS structure makes the conclusion unambiguous.
+
+### Carry-forward to Session 14+
+
+| ID | Bucket | Cluster |
+|---|---|---|
+| **A-13** | MembersPage inline modal extraction (~30-line refactor + adopt useFocusTrap) | Cluster 4 — own session |
+| **A-14 + A-17** | Paired "v2 hook signature" (`viewKey` for multi-view re-focus + `triggerSelector` for re-resolve on close) | Cluster 5 — own session, pilot-then-sweep |
+| **A-15** | Modal-stack registry (Esc only closes topmost) | Ships with Cluster 5 |
+| **A-16** | Clickable-`<div>` trigger conversions (BoardPage `PositionCard` primary; possibly other surfaces) | Cluster 7 — own session, per-surface analysis |
+| **DEV-36** | Route-gate sister routes (8 admin pages) | Own session — bigger than a polish-cluster |
+
+After Cluster 4 + 5/6 paired + 7 + DEV-36 close, the audit's tail becomes orphan resolution (DEV-10 — delete `KitBuilderPage` / `AssignmentsPage` / `CategoriesPage`) → MISSING-tier features (UX-10, CSV exports, resend invitation).
+
+### Session 13 totals
+
+5 polish commits + 1 doc commit = **6 commits**. 8 audit IDs closed across 13 findings (DEV-35 spanned 7 sites). Toast API additively extended. No regressions. Empirical verification reached every cluster despite data-state and window-resize anomalies — code-review carries on the data-blocked sites are honest and bounded.
