@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useFocusTrap } from '../hooks/useFocusTrap'
+import { friendlyError } from '../lib/errors'
 import { useOrg } from '../contexts/OrgContext'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
@@ -565,7 +566,7 @@ function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
       if (insertError.message.includes('duplicate') || insertError.message.includes('unique')) {
         setError('An invitation for this email already exists for this team.')
       } else {
-        setError(insertError.message)
+        setError(friendlyError(insertError))
       }
       setSubmitting(false)
       return

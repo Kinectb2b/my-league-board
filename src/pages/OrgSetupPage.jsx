@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useOrg } from '../contexts/OrgContext'
 import { useNavigate } from 'react-router-dom'
+import { friendlyError } from '../lib/errors'
 
 export default function OrgSetupPage() {
   const [name, setName] = useState('')
@@ -23,7 +24,7 @@ export default function OrgSetupPage() {
 
     if (error) {
       if (error.message.includes('duplicate')) setError('A league with that name already exists.')
-      else setError(error.message)
+      else setError(friendlyError(error))
     } else {
       navigate('/dashboard')
     }

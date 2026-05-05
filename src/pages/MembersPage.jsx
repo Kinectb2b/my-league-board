@@ -328,7 +328,7 @@ function AddMemberModal({ orgId, onClose, onAdded }) {
       onAdded()
       onClose()
     } catch (err) {
-      setError(err.message || 'Failed to add member')
+      setError(friendlyError(err))
     }
     setSubmitting(false)
   }

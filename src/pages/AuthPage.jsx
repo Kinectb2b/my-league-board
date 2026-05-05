@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { friendlyError } from '../lib/errors'
 
 export default function AuthPage() {
   const [isSignUp, setIsSignUp] = useState(false)
@@ -24,11 +25,11 @@ export default function AuthPage() {
 
     if (isSignUp) {
       const { error } = await signUp(email, password, fullName)
-      if (error) setError(error.message)
+      if (error) setError(friendlyError(error))
       else setMessage('Check your email for a confirmation link!')
     } else {
       const { error } = await signIn(email, password)
-      if (error) setError(error.message)
+      if (error) setError(friendlyError(error))
       else navigate('/dashboard')
     }
     setSubmitting(false)
@@ -58,7 +59,7 @@ export default function AuthPage() {
           <form onSubmit={async (e) => {
             e.preventDefault(); setError(''); setMessage('')
             const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/auth' })
-            if (error) setError(error.message)
+            if (error) setError(friendlyError(error))
             else setMessage('Check your email for a reset link!')
           }} className="auth-form">
             <div className="form-group">

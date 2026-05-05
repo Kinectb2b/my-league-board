@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useOrg } from '../contexts/OrgContext'
 import { supabase } from '../lib/supabase'
 import { logActivity } from '../lib/activity'
+import { friendlyError } from '../lib/errors'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 export default function AcceptInvitePage() {
@@ -68,7 +69,7 @@ export default function AcceptInvitePage() {
     })
     if (memberError) {
       if (memberError.message.includes('duplicate')) setError('You are already a member of this league.')
-      else setError(memberError.message)
+      else setError(friendlyError(memberError))
       setAccepting(false)
       return
     }
