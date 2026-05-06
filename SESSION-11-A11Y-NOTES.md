@@ -515,3 +515,81 @@ After Cluster 4 + 5/6 paired + 7 + DEV-36 close, the audit's tail becomes orphan
 ### Session 13 totals
 
 5 polish commits + 1 doc commit = **6 commits**. 8 audit IDs closed across 13 findings (DEV-35 spanned 7 sites). Toast API additively extended. No regressions. Empirical verification reached every cluster despite data-state and window-resize anomalies — code-review carries on the data-blocked sites are honest and bounded.
+
+---
+
+## Cluster 5 v2 close-out (Sessions 14-15 — A-14 + A-17 closed via v2 hook signature)
+
+### Shipped this cluster
+
+| Phase | Sites | Files | Commit |
+|---|---:|---:|---|
+| Pilot — `useFocusTrap` v2 hook + 2 pilot adoptions | 2 | 3 | `6872bf6` |
+| Sweep — 4 remaining sites + 1 a11y bundled (aria-label) | 4 | 4 | `c92c972` |
+| Doc close-out (this commit) | — | — | — |
+| **Total** | **6 site adoptions** | **6 unique** | |
+
+Hook v2 signature additively extends v1: `viewKey` (A-14), `triggerSelector` (A-17). Both opt-in; the 40+ existing v1 consumers are provably inert under v2 (`isFirstViewKeyRender` ref guard for viewKey; `triggerSelectorRef` stays null for callers that don't pass a selector).
+
+### Empirically verified
+
+**Pilot — 3 surfaces:**
+- AddLocationModal (non-opt-in regression check) — byte-identical behavior, initial focus + Tab cycling + Escape close + focus restoration unchanged
+- BoardPage InviteModal — viewKey transitions form → success view, focus shifts into success view (close-X fallback per the per-site decision tree)
+- TeamsPage BulkAssignModal — triggerSelector + MutationObserver waits through fetchAll's transient empty/loading state, focus restores to a 🎒 button
+
+**Sweep — 4 surfaces:**
+- MyTeamPage InviteCoachModal (mirror of Pilot 1)
+- TeamsPage AssignGearModal (viewKey + B2 — `initialFocusRef` ternary using existing `templateNameRef` instead of close-X fallback)
+- EquipmentPage SmartAddModal (picker → form transition, body → close-X improvement)
+- TreasurerPage AddTransactionModal (triggerSelector + bundled aria-label improvement)
+
+All driven via standard methodology: synthetic `KeyboardEvent` for Escape, `.focus()` then `.click()` on triggers, JSON state checks BEFORE any navigates that follow them.
+
+### Hook v2 design decisions ratified
+
+- **viewKey re-fires initial focus only.** Trigger snapshot is NOT re-taken on view switch; Escape listener is NOT re-bound. Pure focus-shift. `isFirstViewKeyRender` ref guard ensures the effect is provably inert for non-opt-in callers — strictly better than "idempotent by inactivity" since 40+ v1 consumers must see zero behavior change.
+- **triggerSelector is the preferred path when provided** (not just a stale-ref fallback). Bypasses the snapshotted trigger ref entirely. This was a refinement during pilot — initial design was "fallback when ref stale," empirical evidence forced "always-selector + async-wait."
+- **MutationObserver over requestAnimationFrame.** Empirical evidence from the BulkAssignModal pilot showed `querySelector` returned null inside an rAF callback because `fetchAll()` re-renders the divisions list with a transient empty/loading state before the trigger remounts. rAF doesn't wait long enough; MutationObserver waits for the actual remount.
+- **`pendingObserverRef` cancels in-flight observer + safety-timeout on subsequent mount.** Required for StrictMode dev double-mount (synthetic cleanup → mount race would otherwise leave a stray observer that fires later and clobbers initial focus). Also defends against rapid reopen-while-pending in prod. JSDoc explicitly says "Do not refactor away."
+- **500ms safety timeout** disconnects the observer if the trigger never reappears (e.g., navigation away during close). Prevents observer leaks.
+- **Per-site decision-tree extension to view-conditional refs** — AssignGearModal's B2 refinement (initialFocusRef ternary across views) is the textbook application of the existing principle: "If primary action is state-conditional, pass the ref to whichever button is conditionally rendered."
+
+### A-14 + A-17 closed
+
+- **A-14 (POLISH) — CLOSED** for the 4 two-overlay multi-view sites (BoardPage InviteModal, MyTeamPage InviteCoachModal, TeamsPage AssignGearModal, EquipmentPage SmartAddModal) via `viewKey` opt-in. The 2 single-overlay sites originally listed in Session 12's A-14 scope are filed separately as A-14b below.
+- **A-17 (POLISH) — CLOSED.** Focus restoration when trigger re-renders during modal lifecycle now handled via `triggerSelector` opt-in + MutationObserver async resolution. Adopted on TeamsPage `BulkAssignModal` pilot + TreasurerPage `AddTransactionModal` sweep. Both empirically confirmed unstable (Session 12 batch 2a + 2b observations now closed).
+
+### A-14b filed
+
+**A-14b (POLISH) — single-overlay multi-view modals don't re-fire initial focus on inner-content swap.** A-14 fix in v2 hook adopted on 4 two-overlay sites (form + success/secondary as separate `.modal` divs). Two single-overlay sites with inner-content swap remain unadopted: LocationsPage `AddStockModal` (search view → qty view via `adding` state), TeamsPage `BulkAssignModal` (form view → results view post-submit). Same `viewKey` opt-in fix as Cluster 5 v2 sweep, ~1 line each. Surfaced during Session 15 close-out review — out of original sweep scope. Per-site polish; filing for tracking, not blocking.
+
+### A-17b filed
+
+**A-17b (POLISH) — `triggerSelector` imprecision for repeated triggers.** `triggerSelector` resolved via `document.querySelector` returns the first match in DOM order. For non-unique selectors (e.g., 🎒 button repeated per division on TeamsPage), focus restoration lands on *some* matching button rather than necessarily the original instance. Acceptable trade-off vs. body-fallback (current pre-A-17 behavior). Refinement: encode a unique attribute (e.g., `data-division-id={div.id}`) on repeated triggers and have callers pass a state-derived selector. The `triggerSelectorRef` mirror added in the v2 hook already supports state-derived selectors via the latest-value-on-cleanup pattern — A-17b is a per-site change, NOT another hook change. Architecture is forward-compatible. Probably 1-3 sites total. Surfaced during Cluster 5 v2 hook architecture review (Session 15).
+
+### Methodology refinements ratified this session
+
+- **Hook-level halt cadence with empirical-before-commit gate.** Per-site adoption commits use the existing "commit → push → empirical verify" cadence — regressions on a single site are easy to fix-forward. Hook changes that affect 40+ consumers warrant an extra checkpoint: apply locally → build/lint → halt for empirical verification → commit + halt before push. Pilot-then-sweep cadence's third structural checkpoint at zero cost. Caught a StrictMode-rAF race in the v2 hook before it reached commit (Halt 1c → F1 fix; later superseded by G2 MutationObserver path after empirical evidence forced the deeper fix).
+- **MutationObserver-over-rAF lesson.** When focus-restoration depends on a trigger that's re-rendered through an *async* re-fetch (the typical `onClose={() => { setX(null); fetchAll() }}` pattern), `requestAnimationFrame` is insufficient — the trigger may not be in the DOM by the time rAF fires. MutationObserver waits for the actual remount. 500ms safety timeout caps the wait. Pairs with the `pendingObserverRef` cancellation pattern for StrictMode dev safety.
+- **aria-label-as-selector-anchor pattern.** When opting a site into A-17, prefer adding (or improving) an `aria-label` on the trigger button and using `button[aria-label="..."]` as the `triggerSelector`. Two wins for one diff: (a) screen-reader label improvement (drops leading glyphs like "+" or "🎒" from announced text) and (b) stable selector hook that doesn't depend on visible text content or title attributes. Applied on TreasurerPage AddTransactionModal — `aria-label="Add transaction"` replaces what was previously text-only labeling.
+- **TDZ trap on hook-call ordering.** When extending a useFocusTrap call with a derived param (`viewKey: someState ? 'a' : 'b'`), make sure the referenced state is declared *above* the hook call in the component body. Pre-existing useFocusTrap calls were sometimes placed near refs (above useState). The reorder is mechanical (move useFocusTrap below the useState block) and preserves React's hook-call-order invariant since only JS variable bindings shift, not the hook call sequence within a single render.
+- **Already-declared-but-unwired refs are sweep-time wins.** AssignGearModal had `templateNameRef` declared but only `templateSelectRef` was passed to useFocusTrap. The B2 refinement (ternary across the two refs) was a strict win discovered during sweep planning. Worth a per-site read before applying viewKey: check if a second view-specific ref already exists for free.
+
+### Carry-forward to Session 16+
+
+| ID | Bucket | Cluster |
+|---|---|---|
+| **A-14b** (filed this session) | Single-overlay multi-view `viewKey` opt-in for LocationsPage `AddStockModal` + TeamsPage `BulkAssignModal` form→results | Per-site polish; ~1 line each |
+| **A-15** | Modal-stack registry (Esc only closes topmost nested modal) | Future a11y session |
+| **A-16** | Clickable-`<div>` trigger conversions (BoardPage `PositionCard` primary) | Cluster 7 — own session, per-surface analysis |
+| **A-17b** (filed this session) | `triggerSelector` per-site refinement for repeated triggers (data-id encoding + state-derived selector) | Per-site polish; ~1-3 sites |
+| **DEV-36** | Route-gate sister routes (8 admin pages) | Own session — bigger than a polish-cluster |
+
+A-13 closed in Session 14 via the AssignPositionModal extraction + adoption commit (`314ac4d`). A-14 + A-17 closed this session.
+
+### Session 14-15 totals
+
+2 polish commits (`6872bf6` v2 hook + 2 pilots, `c92c972` 4-site sweep) + 1 doc commit (this) = **3 commits**. 2 audit IDs closed (A-14 + A-17), 2 new audit IDs filed (A-14b + A-17b). 1 hook upgrade (v1 → v2 with two additive params), 6 site adoptions (2 pilot + 4 sweep), 1 bundled a11y improvement (TreasurerPage trigger aria-label). 4 methodology refinements ratified.
+
+After A-14b + A-15 + A-16 + A-17b close in future sessions, the a11y audit's tail becomes orphan resolution (DEV-10) → MISSING-tier features (UX-10, CSV exports, resend invitation), per the broader plan.
