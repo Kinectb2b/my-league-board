@@ -337,7 +337,6 @@ function AssignGearModal({ team, templates, onAssign, onClose }) {
   const { currentOrg } = useOrg()
   const templateSelectRef = useRef(null)
   const templateNameRef = useRef(null)
-  const modalRef = useFocusTrap({ onClose, initialFocusRef: templateSelectRef })
   const [templateId, setTemplateId] = useState('')
   const [bagTag, setBagTag] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -350,6 +349,11 @@ function AssignGearModal({ team, templates, onAssign, onClose }) {
   const [tItems, setTItems] = useState([])
   const [tSubmitting, setTSubmitting] = useState(false)
   const [tError, setTError] = useState('')
+  const modalRef = useFocusTrap({
+    onClose,
+    initialFocusRef: showCreateTemplate ? templateNameRef : templateSelectRef,
+    viewKey: showCreateTemplate ? 'create-template' : 'assign',
+  })
 
   useEffect(() => {
     if (currentOrg) {

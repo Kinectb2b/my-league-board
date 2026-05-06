@@ -526,7 +526,6 @@ function TeamDetail({ team, showBackToList }) {
 
 function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
   const fullNameRef = useRef(null)
-  const modalRef = useFocusTrap({ onClose, initialFocusRef: fullNameRef })
   const { addToast } = useToast()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -536,6 +535,11 @@ function InviteCoachModal({ orgId, userId, team, onClose, onSent }) {
   const [error, setError] = useState(null)
   const [inviteLink, setInviteLink] = useState(null)
   const [emailStatus, setEmailStatus] = useState(null) // 'pending' | 'sent' | 'failed'
+  const modalRef = useFocusTrap({
+    onClose,
+    initialFocusRef: fullNameRef,
+    viewKey: inviteLink ? 'success' : 'form',
+  })
 
   async function handleSubmit(e) {
     e.preventDefault()

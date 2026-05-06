@@ -1628,8 +1628,11 @@ function ItemDetailModal({ item, locationStock, locations, canEdit, onClose }) {
 }
 
 function SmartAddModal({ item, categories, locations, orgId, onSave, onClose }) {
-  const modalRef = useFocusTrap({ onClose })
   const [equipType, setEquipType] = useState(null)
+  const modalRef = useFocusTrap({
+    onClose,
+    viewKey: (!equipType && !item) ? 'picker' : 'form',
+  })
   const [form, setForm] = useState({
     name: item?.name || '', category_id: item?.category_id || '', quantity: item?.quantity || 1,
     item_condition: item?.item_condition || 'good', status: item?.status || 'available',

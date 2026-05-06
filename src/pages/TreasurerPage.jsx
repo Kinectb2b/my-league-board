@@ -62,7 +62,7 @@ export default function TreasurerPage() {
             <h1 style={{ fontSize: '1.75rem', fontWeight: 700, marginBottom: '0.25rem' }}>Treasurer</h1>
             <p className="text-muted">League finances and sponsorships</p>
           </div>
-          {canEdit && tab === 'transactions' && <button className="btn-primary" onClick={() => setShowAddTransaction(true)}>+ Add transaction</button>}
+          {canEdit && tab === 'transactions' && <button className="btn-primary" aria-label="Add transaction" onClick={() => setShowAddTransaction(true)}>+ Add transaction</button>}
           {canEdit && tab === 'sponsors' && <button className="btn-primary" onClick={() => setShowAddSponsor(true)}>+ Add sponsor</button>}
         </div>
 
@@ -179,7 +179,11 @@ export default function TreasurerPage() {
 
 function AddTransactionModal({ categories, orgId, userId, onClose, addToast }) {
   const amountInputRef = useRef(null)
-  const modalRef = useFocusTrap({ onClose, initialFocusRef: amountInputRef })
+  const modalRef = useFocusTrap({
+    onClose,
+    initialFocusRef: amountInputRef,
+    triggerSelector: 'button[aria-label="Add transaction"]',
+  })
   const [type, setType] = useState('expense')
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
