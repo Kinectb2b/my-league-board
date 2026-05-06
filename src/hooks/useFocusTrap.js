@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const FOCUSABLE_SELECTOR = [
   'a[href]:not([disabled])',
@@ -8,6 +8,14 @@ const FOCUSABLE_SELECTOR = [
   'textarea:not([disabled])',
   '[tabindex]:not([tabindex="-1"]):not([disabled])',
 ].join(',')
+
+// A-15: module-level modal stack. Each useFocusTrap instance pushes a
+// Symbol identity on mount and pops on unmount. The keydown handler
+// early-returns unless this instance is the topmost (last-pushed) entry,
+// so Escape and Tab only act on the active (innermost) modal. Prevents
+// Escape-cascades (parent + nested both closing) and Tab-steals (parent's
+// "wrap to first" stealing focus from a nested modal).
+const modalStack = []
 
 function isVisible(el) {
   return el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0
@@ -136,8 +144,24 @@ function getFocusableElements(container) {
  *   (synthetic cleanup→mount race would otherwise leave a stray observer
  *   that fires later and clobbers initial focus), also defends against
  *   rapid reopen-while-pending in prod. Do not refactor away.
+ *
+ * A-15 modal-stack registry: each instance participates in a module-level
+ * stack; only the topmost instance handles Escape and Tab. Prevents
+ * Escape-cascades (parent + nested both closing) and Tab-steals (parent's
+ * "wrap to first" stealing focus from a nested modal). Identity-based via
+ * Symbol per useState lazy init — provably correct under StrictMode dev
+ * double-mount (synthetic cleanup pops, synthetic mount re-pushes the
+ * same Symbol; indexOf+splice handles double-pop benignly).
+ *
+ * Caveat: assumes mount order = topmost order, which holds for nested
+ * modals opened by user action (parent commits, then child commits in a
+ * later tick). Not robust to programmatic simultaneous-mount of nested
+ * modals in the same commit — child effect fires before parent's, so
+ * stack=[child, parent] would put parent on top semantically wrong. No
+ * such pattern exists in this codebase.
  */
 export function useFocusTrap({ onClose, initialFocusRef, viewKey, triggerSelector }) {
+  const [instanceId] = useState(() => Symbol('useFocusTrap'))
   const containerRef = useRef(null)
   const triggerRef = useRef(null)
   const onCloseRef = useRef(onClose)
@@ -165,6 +189,7 @@ export function useFocusTrap({ onClose, initialFocusRef, viewKey, triggerSelecto
     }
 
     function handleKey(e) {
+      if (modalStack[modalStack.length - 1] !== instanceId) return
       if (e.key === 'Escape') {
         e.preventDefault()
         onCloseRef.current?.()
@@ -192,9 +217,12 @@ export function useFocusTrap({ onClose, initialFocusRef, viewKey, triggerSelecto
       }
     }
 
+    modalStack.push(instanceId)
     document.addEventListener('keydown', handleKey)
     return () => {
       document.removeEventListener('keydown', handleKey)
+      const idx = modalStack.indexOf(instanceId)
+      if (idx !== -1) modalStack.splice(idx, 1)
       const sel = triggerSelectorRef.current
       if (sel) {
         const tryFocus = () => {
