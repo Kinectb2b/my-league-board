@@ -756,7 +756,11 @@ function printChecklist(team, bag) {
 
 function BulkAssignModal({ division, teams, templates, existingBags, filterSeason, onAssign, onClose }) {
   const templateSelectRef = useRef(null)
-  const modalRef = useFocusTrap({ onClose, initialFocusRef: templateSelectRef })
+  const modalRef = useFocusTrap({
+    onClose,
+    initialFocusRef: templateSelectRef,
+    triggerSelector: 'button[title="Assign gear to all teams"]',
+  })
   const [templateId, setTemplateId] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [results, setResults] = useState(null)

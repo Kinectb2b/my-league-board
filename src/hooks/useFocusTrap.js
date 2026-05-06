@@ -92,14 +92,66 @@ function getFocusableElements(container) {
  *
  * onClose is held via ref so identity churn (inline arrow funcs) doesn't
  * tear down and rebind the keydown listener on parent re-render.
+ *
+ * v2 additive params (Cluster 5, A-14 + A-17):
+ *
+ *   viewKey (A-14) — primitive (string/number/boolean). When the value
+ *   changes between renders, focus is re-shifted to initialFocusRef.current
+ *   (or first focusable in container if the ref is null/detached). Trigger
+ *   snapshot is NOT re-taken; Escape listener is NOT re-bound. Pure
+ *   focus-shift, idempotent. Omit for single-view modals — provably inert
+ *   on the first render via isFirstViewKeyRender guard.
+ *
+ *   triggerSelector (A-17) — CSS string. When provided, ALWAYS used for
+ *   focus restoration on unmount, bypassing the snapshotted trigger ref
+ *   entirely. Cleanup tries an immediate querySelector first; if the
+ *   element is already in the DOM, focus is restored synchronously. If
+ *   not, a MutationObserver waits for the trigger to (re)appear and
+ *   focuses it then.
+ *
+ *   Why MutationObserver and not requestAnimationFrame: empirical evidence
+ *   from the BulkAssignModal pilot showed that the typical
+ *   onClose={() => { setX(null); fetchAll() }} pattern can transiently
+ *   unmount the trigger before remounting it after the async fetch
+ *   resolves — i.e., the divisions list passes through an empty/loading
+ *   state in which querySelector returns null. rAF doesn't wait long
+ *   enough; MutationObserver waits for the actual remount.
+ *
+ *   500ms safety timeout disconnects the observer if the trigger never
+ *   reappears (e.g., the surrounding context navigated away during
+ *   close), preventing observer leaks. Use when the parent re-renders
+ *   the trigger between modal-open and modal-close. Without a selector,
+ *   falls back to the original trigger-ref + body-fallback path
+ *   (existing behavior for the 40+ non-opt-in consumers).
+ *
+ *   Note: querySelector returns the FIRST match; for repeated triggers,
+ *   focus restores to *some* matching element rather than necessarily the
+ *   original. Strictly better than body-fallback, which is the bar. See
+ *   A-17b for the per-site refinement (data-id encoding + state-derived
+ *   selector); architecture is forward-compatible — triggerSelectorRef
+ *   reads the latest value, supporting state-derived selectors.
+ *
+ *   pendingObserverRef cancels in-flight observer + safety-timeout on
+ *   subsequent mount — required for StrictMode dev double-mount
+ *   (synthetic cleanup→mount race would otherwise leave a stray observer
+ *   that fires later and clobbers initial focus), also defends against
+ *   rapid reopen-while-pending in prod. Do not refactor away.
  */
-export function useFocusTrap({ onClose, initialFocusRef }) {
+export function useFocusTrap({ onClose, initialFocusRef, viewKey, triggerSelector }) {
   const containerRef = useRef(null)
   const triggerRef = useRef(null)
   const onCloseRef = useRef(onClose)
   useEffect(() => { onCloseRef.current = onClose })
+  const triggerSelectorRef = useRef(triggerSelector)
+  useEffect(() => { triggerSelectorRef.current = triggerSelector })
+  const pendingObserverRef = useRef(null)
 
   useEffect(() => {
+    if (pendingObserverRef.current) {
+      pendingObserverRef.current.obs.disconnect()
+      clearTimeout(pendingObserverRef.current.timeoutId)
+      pendingObserverRef.current = null
+    }
     const container = containerRef.current
     if (!container) return
 
@@ -143,12 +195,52 @@ export function useFocusTrap({ onClose, initialFocusRef }) {
     document.addEventListener('keydown', handleKey)
     return () => {
       document.removeEventListener('keydown', handleKey)
-      const trigger = triggerRef.current
-      if (trigger && document.body.contains(trigger)) {
-        trigger.focus()
+      const sel = triggerSelectorRef.current
+      if (sel) {
+        const tryFocus = () => {
+          const el = document.querySelector(sel)
+          if (el instanceof HTMLElement) {
+            el.focus()
+            return true
+          }
+          return false
+        }
+        if (tryFocus()) return
+        const obs = new MutationObserver(() => {
+          if (tryFocus()) {
+            obs.disconnect()
+            clearTimeout(timeoutId)
+            pendingObserverRef.current = null
+          }
+        })
+        obs.observe(document.body, { childList: true, subtree: true })
+        const timeoutId = setTimeout(() => {
+          obs.disconnect()
+          pendingObserverRef.current = null
+        }, 500)
+        pendingObserverRef.current = { obs, timeoutId }
+        return
       }
+      const trigger = triggerRef.current
+      if (trigger && document.body.contains(trigger)) trigger.focus()
     }
   }, [])
+
+  // A-14: re-shift focus when viewKey changes. First render is skipped via
+  // ref guard so this effect is a strict no-op for callers that don't pass
+  // viewKey — provably inert for the 40+ existing non-opt-in consumers.
+  const isFirstViewKeyRender = useRef(true)
+  useEffect(() => {
+    if (isFirstViewKeyRender.current) {
+      isFirstViewKeyRender.current = false
+      return
+    }
+    if (viewKey === undefined) return
+    const container = containerRef.current
+    if (!container) return
+    const target = initialFocusRef?.current ?? getFocusableElements(container)[0]
+    target?.focus()
+  }, [viewKey])
 
   return containerRef
 }

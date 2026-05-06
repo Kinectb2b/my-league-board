@@ -360,7 +360,6 @@ function PositionDetailModal({ position, members, pendingInvite, canEdit, onClos
 function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClose, onSent }) {
   const { addToast } = useToast()
   const fullNameRef = useRef(null)
-  const modalRef = useFocusTrap({ onClose, initialFocusRef: fullNameRef })
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -371,6 +370,11 @@ function InviteModal({ orgId, userId, vacantPositions, prefilledPosition, onClos
   const [error, setError] = useState(null)
   const [inviteLink, setInviteLink] = useState(null)
   const [emailStatus, setEmailStatus] = useState(null) // 'pending' | 'sent' | 'failed'
+  const modalRef = useFocusTrap({
+    onClose,
+    initialFocusRef: fullNameRef,
+    viewKey: inviteLink ? 'success' : 'form',
+  })
 
   // Order is intentional UX: admin first, then coach, then board roles
   // by responsibility, with general board_member / volunteer at the end.
