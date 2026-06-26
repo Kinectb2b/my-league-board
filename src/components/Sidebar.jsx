@@ -39,6 +39,7 @@ export default function Sidebar() {
       fields: ['admin','equipment_manager','coach','board_member','volunteer','field_manager'],
       treasurer: ['admin'],
       safety: ['admin', 'safety_officer'],
+      board: ['admin', 'board_member'],
       members: ['admin'],
       settings: ['admin','equipment_manager']
     }
@@ -107,9 +108,9 @@ export default function Sidebar() {
           {canSee('safety') && <NavLink to="/safety" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">🛡️</span> Safety
           </NavLink>}
-          <NavLink to="/board" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+          {canSee('board') && <NavLink to="/board" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">👤</span> Board
-          </NavLink>
+          </NavLink>}
           {canSee('members') && <NavLink to="/members" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
             <span className="nav-icon">👥</span> Members
           </NavLink>}

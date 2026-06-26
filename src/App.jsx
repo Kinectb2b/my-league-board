@@ -62,23 +62,23 @@ function AppRoutes() {
     <Routes>
       <Route path="/auth" element={user ? <Navigate to="/dashboard" /> : <AuthPage />} />
       <Route path="/setup" element={!user ? <Navigate to="/auth" /> : (currentOrg ? <Navigate to="/dashboard" /> : <OrgSetupPage />)} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/equipment/dashboard" element={<ProtectedRoute><EquipmentDashboardPage /></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute roles={['admin', 'equipment_manager', 'coach', 'board_member', 'volunteer']}><Dashboard /></ProtectedRoute>} />
+      <Route path="/equipment/dashboard" element={<ProtectedRoute roles={['admin', 'equipment_manager']}><EquipmentDashboardPage /></ProtectedRoute>} />
       <Route path="/equipment" element={<ProtectedRoute roles={['admin', 'equipment_manager', 'board_member']}><EquipmentPage /></ProtectedRoute>} />
-      <Route path="/teams" element={<ProtectedRoute><TeamsPage /></ProtectedRoute>} />
-      <Route path="/locations" element={<ProtectedRoute><LocationsPage /></ProtectedRoute>} />
-      <Route path="/treasurer" element={<ProtectedRoute><TreasurerPage /></ProtectedRoute>} />
-      <Route path="/safety" element={<ProtectedRoute><SafetyPage /></ProtectedRoute>} />
-      <Route path="/board" element={<ProtectedRoute><BoardPage /></ProtectedRoute>} />
-      <Route path="/members" element={<ProtectedRoute><MembersPage /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-      <Route path="/tickets" element={<ProtectedRoute><TicketsPage /></ProtectedRoute>} />
-      <Route path="/tickets/new" element={<ProtectedRoute><NewTicketPage /></ProtectedRoute>} />
-      <Route path="/tickets/:id" element={<ProtectedRoute><TicketDetailPage /></ProtectedRoute>} />
-      <Route path="/bag-templates" element={<ProtectedRoute><BagTemplatesPage /></ProtectedRoute>} />
-      <Route path="/team-bags" element={<ProtectedRoute><TeamBagsPage /></ProtectedRoute>} />
-      <Route path="/team-bags/:id" element={<ProtectedRoute><TeamBagDetailPage /></ProtectedRoute>} />
-      <Route path="/fields" element={<ProtectedRoute><FieldsPage /></ProtectedRoute>} />
+      <Route path="/teams" element={<ProtectedRoute roles={['admin', 'equipment_manager', 'coach', 'board_member', 'volunteer']}><TeamsPage /></ProtectedRoute>} />
+      <Route path="/locations" element={<ProtectedRoute roles={['admin', 'equipment_manager', 'board_member']}><LocationsPage /></ProtectedRoute>} />
+      <Route path="/treasurer" element={<ProtectedRoute roles={['admin']}><TreasurerPage /></ProtectedRoute>} />
+      <Route path="/safety" element={<ProtectedRoute roles={['admin', 'safety_officer']}><SafetyPage /></ProtectedRoute>} />
+      <Route path="/board" element={<ProtectedRoute roles={['admin', 'board_member']}><BoardPage /></ProtectedRoute>} />
+      <Route path="/members" element={<ProtectedRoute roles={['admin']}><MembersPage /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute roles={['admin', 'equipment_manager']}><SettingsPage /></ProtectedRoute>} />
+      <Route path="/tickets" element={<ProtectedRoute roles={['admin', 'equipment_manager', 'coach', 'board_member', 'volunteer']}><TicketsPage /></ProtectedRoute>} />
+      <Route path="/tickets/new" element={<ProtectedRoute roles={['admin', 'equipment_manager', 'coach', 'board_member', 'volunteer']}><NewTicketPage /></ProtectedRoute>} />
+      <Route path="/tickets/:id" element={<ProtectedRoute roles={['admin', 'equipment_manager', 'coach', 'board_member', 'volunteer']}><TicketDetailPage /></ProtectedRoute>} />
+      <Route path="/bag-templates" element={<ProtectedRoute roles={['admin', 'equipment_manager']}><BagTemplatesPage /></ProtectedRoute>} />
+      <Route path="/team-bags" element={<ProtectedRoute roles={['admin', 'equipment_manager']}><TeamBagsPage /></ProtectedRoute>} />
+      <Route path="/team-bags/:id" element={<ProtectedRoute roles={['admin', 'equipment_manager']}><TeamBagDetailPage /></ProtectedRoute>} />
+      <Route path="/fields" element={<ProtectedRoute roles={['admin', 'equipment_manager', 'coach', 'board_member', 'volunteer', 'field_manager']}><FieldsPage /></ProtectedRoute>} />
       <Route path="/my-team" element={<ProtectedRoute><MyTeamPage /></ProtectedRoute>} />
       <Route path="/my-team/:team_id" element={<ProtectedRoute><MyTeamPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
